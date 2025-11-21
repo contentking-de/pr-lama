@@ -1,0 +1,172 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(MEMBER)
+  emailVerified DateTime?
+  image     String?
+  accounts  Account[]
+  sessions  Session[]
+  linkSources LinkSource[] @relation("LinkSourcePublisher")
+  linkSourcesCreated LinkSource[] @relation("LinkSourceCreator")
+  linkBookingsRequested LinkBooking[] @relation("BookingRequester")
+  linkBookingsAccepted LinkBooking[] @relation("BookingAccepter")
+  linkBookingsContentCompleted LinkBooking[] @relation("BookingContentCompleter")
+  linkBookingsPublished LinkBooking[] @relation("BookingPublisher")
+  contentAssets ContentAsset[]
+  publisherContact PublisherContact?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+  PUBLISHER
+}
+
+model LinkSource {
+  id          String   @id @default(uuid())
+  name        String
+  url         String
+  publisherId String
+  price       Decimal  @db.Decimal(10, 2)
+  category    String
+  type        String
+  da          Int?     // Domain Authority
+  dr          Int?     // Domain Rating
+  availability String
+  description String?  @db.Text
+  publisher   User     @relation("LinkSourcePublisher", fields: [publisherId], references: [id])
+  createdBy   String
+  creator     User     @relation("LinkSourceCreator", fields: [createdBy], references: [id])
+  linkBookings LinkBooking[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Client {
+  id          String   @id @default(uuid())
+  brand       String
+  domain      String
+  categories  String[]
+  contactPersons ContactPerson[]
+  linkBookings LinkBooking[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ContactPerson {
+  id        String   @id @default(uuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LinkBooking {
+  id                      String   @id @default(uuid())
+  linkSourceId            String
+  linkSource              LinkSource @relation(fields: [linkSourceId], references: [id])
+  clientId                String
+  client                  Client   @relation(fields: [clientId], references: [id])
+  targetUrl               String
+  anchorText              String
+  publicationDate         DateTime
+  status                  BookingStatus @default(REQUESTED)
+  publisherProducesContent Boolean  @default(false)
+  requestedBy             String
+  requester               User     @relation("BookingRequester", fields: [requestedBy], references: [id])
+  acceptedBy              String?
+  accepter                User?    @relation("BookingAccepter", fields: [acceptedBy], references: [id])
+  contentCompletedBy      String?
+  contentCompleter        User?    @relation("BookingContentCompleter", fields: [contentCompletedBy], references: [id])
+  publishedBy             String?
+  publisher               User?    @relation("BookingPublisher", fields: [publishedBy], references: [id])
+  contentAssets           ContentAsset[]
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}
+
+enum BookingStatus {
+  REQUESTED
+  ACCEPTED
+  CONTENT_PENDING
+  CONTENT_PROVIDED
+  PUBLISHED
+}
+
+model ContentAsset {
+  id        String   @id @default(uuid())
+  bookingId String
+  booking   LinkBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileUrl   String   @db.Text
+  fileType  String
+  uploadedBy String
+  uploader  User     @relation(fields: [uploadedBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PublisherContact {
+  id        String   @id @default(uuid())
+  publisherId String @unique
+  publisher User     @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  email     String
+  phone     String
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
