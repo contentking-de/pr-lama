@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import ContentUpload from "@/components/ContentUpload"
 import AIContentGenerator from "@/components/AIContentGenerator"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 
 export default async function ContentPage({
