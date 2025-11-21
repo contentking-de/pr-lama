@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import Link from "next/link"
 import UpdateSistrixButton from "@/components/UpdateSistrixButton"
+import SourceFilters from "@/components/SourceFilters"
+import BatchUpdateSistrixButton from "@/components/BatchUpdateSistrixButton"
+import Pagination from "@/components/Pagination"
+
+export const dynamic = "force-dynamic"
 
 export default async function SourcesPage({
   searchParams,
@@ -12,32 +17,173 @@ export default async function SourcesPage({
   const resolvedSearchParams = await searchParams
   const user = await requireRole(["ADMIN", "MEMBER", "PUBLISHER"])
 
-  // Publisher sehen nur eigene Quellen
-  const where =
+  // Extrahiere Filter-Parameter
+  const search = Array.isArray(resolvedSearchParams.search)
+    ? resolvedSearchParams.search[0]
+    : (resolvedSearchParams.search as string | undefined)
+  const category = Array.isArray(resolvedSearchParams.category)
+    ? resolvedSearchParams.category[0]
+    : (resolvedSearchParams.category as string | undefined)
+  const maxPrice = Array.isArray(resolvedSearchParams.maxPrice)
+    ? resolvedSearchParams.maxPrice[0]
+    : (resolvedSearchParams.maxPrice as string | undefined)
+  const minSistrix = Array.isArray(resolvedSearchParams.minSistrix)
+    ? resolvedSearchParams.minSistrix[0]
+    : (resolvedSearchParams.minSistrix as string | undefined)
+  const publisher = Array.isArray(resolvedSearchParams.publisher)
+    ? resolvedSearchParams.publisher[0]
+    : (resolvedSearchParams.publisher as string | undefined)
+  
+  // Pagination
+  const page = parseInt(
+    Array.isArray(resolvedSearchParams.page)
+      ? resolvedSearchParams.page[0]
+      : (resolvedSearchParams.page as string | undefined) || "1"
+  )
+  const itemsPerPage = 50
+  const skip = (page - 1) * itemsPerPage
+
+  // Baue where-Klausel auf
+  const where: any =
     user.role === "PUBLISHER"
       ? { publisherId: user.id }
       : {}
 
-  const sources = await prisma.linkSource.findMany({
-    where,
-    include: {
-      publisher: {
-        select: {
-          name: true,
-          email: true,
+  // Publisher-Filter (nur für ADMIN/MEMBER, Publisher sehen nur eigene)
+  if (publisher && user.role !== "PUBLISHER") {
+    where.publisherId = publisher
+  }
+
+  // Suche nach Name oder URL
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { url: { contains: search, mode: "insensitive" } },
+    ]
+  }
+
+  // Filter nach Kategorie
+  if (category) {
+    where.category = category
+  }
+
+  // Preis-Filter
+  if (maxPrice) {
+    where.price = {
+      lte: parseFloat(maxPrice),
+    }
+  }
+
+  // Sistrix Sichtbarkeitsindex-Filter
+  if (minSistrix) {
+    where.sistrixVisibilityIndex = {
+      gte: parseInt(minSistrix),
+    }
+  }
+
+  // Basis-Query für Preis-Berechnung (ohne Filter)
+  const baseWhere = user.role === "PUBLISHER" ? { publisherId: user.id } : {}
+
+  const [sources, totalSources, categories, publishers, priceRange, sistrixRange, totalSourcesCount] = await Promise.all([
+    prisma.linkSource.findMany({
+      where,
+      include: {
+        publisher: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+        creator: {
+          select: {
+            name: true,
+            email: true,
+          },
         },
       },
-      creator: {
-        select: {
-          name: true,
-          email: true,
-        },
+      orderBy: {
+        createdAt: "desc",
       },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  })
+      skip,
+      take: itemsPerPage,
+    }),
+    prisma.linkSource.count({ where }),
+    prisma.category.findMany({
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        name: true,
+      },
+    }).catch(() => []),
+    // Hole alle Publisher für Filter (nur für ADMIN/MEMBER)
+    user.role === "ADMIN" || user.role === "MEMBER"
+      ? prisma.user.findMany({
+          where: {
+            role: "PUBLISHER",
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+          orderBy: {
+            name: "asc",
+          },
+        })
+      : Promise.resolve([]),
+    // Berechne Min/Max Preis für Slider
+    (async () => {
+      const prices = await prisma.linkSource.findMany({
+        where: baseWhere,
+        select: {
+          price: true,
+        },
+      })
+      if (prices.length === 0) {
+        return { min: 0, max: 1000 }
+      }
+      const priceValues = prices.map((p) => parseFloat(p.price.toString()))
+      return {
+        min: Math.floor(Math.min(...priceValues)),
+        max: Math.ceil(Math.max(...priceValues)),
+      }
+    })(),
+    // Berechne Min/Max Sistrix Index für Slider
+    (async () => {
+      try {
+        const sistrixValues = await prisma.linkSource.findMany({
+          where: {
+            ...baseWhere,
+            sistrixVisibilityIndex: { not: null },
+          },
+          select: {
+            sistrixVisibilityIndex: true,
+          },
+        })
+        if (sistrixValues.length === 0) {
+          return { min: 0, max: 10000 } // Standard-Werte (0.0000 - 1.0000)
+        }
+        const sistrixIndexes = sistrixValues
+          .map((s) => s.sistrixVisibilityIndex)
+          .filter((v): v is number => v !== null)
+        if (sistrixIndexes.length === 0) {
+          return { min: 0, max: 10000 }
+        }
+        return {
+          min: Math.floor(Math.min(...sistrixIndexes)),
+          max: Math.ceil(Math.max(...sistrixIndexes)),
+        }
+      } catch (error) {
+        console.error("Fehler beim Berechnen der Sistrix Range:", error)
+        return { min: 0, max: 10000 }
+      }
+    })(),
+    // Gesamtzahl aller Sources (für Batch-Update Button)
+    prisma.linkSource.count({
+      where: baseWhere,
+    }),
+  ])
 
   return (
     <Layout>
@@ -52,14 +198,25 @@ export default async function SourcesPage({
             </p>
           </div>
           {(user.role === "ADMIN" || user.role === "MEMBER") && (
-            <Link
-              href="/sources/new"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Neue Linkquelle
-            </Link>
+            <div className="flex gap-3 items-center">
+              <BatchUpdateSistrixButton totalSources={totalSourcesCount} />
+              <Link
+                href="/sources/new"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Neue Linkquelle
+              </Link>
+            </div>
           )}
         </div>
+
+        {/* Filter */}
+        <SourceFilters 
+          categories={categories.map((c) => c.name)} 
+          priceRange={priceRange}
+          sistrixRange={sistrixRange}
+          publishers={publishers}
+        />
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
@@ -126,23 +283,28 @@ export default async function SourcesPage({
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
                       {source.sistrixVisibilityIndex !== null && source.sistrixVisibilityIndex !== undefined ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          {(source.sistrixVisibilityIndex / 10000).toFixed(4)}
-                        </span>
+                        <>
+                          <span className="text-sm font-medium text-gray-900">
+                            {(source.sistrixVisibilityIndex / 10000).toFixed(4)}
+                          </span>
                           {source.sistrixLastUpdated && (
                             <span className="text-xs text-gray-500">
                               ({new Date(source.sistrixLastUpdated).toLocaleDateString("de-DE")})
                             </span>
                           )}
-                        </div>
+                          {(user.role === "ADMIN" || user.role === "MEMBER") && (
+                            <UpdateSistrixButton sourceId={source.id} />
+                          )}
+                        </>
                       ) : (
-                        <span className="text-xs text-gray-400">Nicht verfügbar</span>
-                      )}
-                      {(user.role === "ADMIN" || user.role === "MEMBER") && (
-                        <UpdateSistrixButton sourceId={source.id} />
+                        <>
+                          <span className="text-xs text-gray-400">Nicht verfügbar</span>
+                          {(user.role === "ADMIN" || user.role === "MEMBER") && (
+                            <UpdateSistrixButton sourceId={source.id} />
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
@@ -174,6 +336,16 @@ export default async function SourcesPage({
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalSources > 0 && (
+          <Pagination
+            currentPage={page}
+            totalPages={Math.ceil(totalSources / itemsPerPage)}
+            totalItems={totalSources}
+            itemsPerPage={itemsPerPage}
+          />
+        )}
       </div>
     </Layout>
   )

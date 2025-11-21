@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { put } from "@vercel/blob"
+import { sendContentProvidedNotificationEmail } from "@/lib/email"
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,9 +20,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    // Buchung prüfen
+    // Buchung mit allen benötigten Daten laden
     const booking = await prisma.linkBooking.findUnique({
       where: { id: bookingId },
+      include: {
+        linkSource: {
+          include: {
+            publisher: {
+              select: {
+                email: true,
+                name: true,
+              },
+            },
+          },
+        },
+        client: {
+          select: {
+            brand: true,
+            domain: true,
+          },
+        },
+      },
     })
 
     if (!booking) {
@@ -72,7 +91,8 @@ export async function POST(req: NextRequest) {
     })
 
     // Status auf CONTENT_PROVIDED setzen, wenn noch nicht gesetzt
-    if (booking.status === "CONTENT_PENDING") {
+    const wasContentPending = booking.status === "CONTENT_PENDING"
+    if (wasContentPending) {
       await prisma.linkBooking.update({
         where: { id: bookingId },
         data: {
@@ -80,6 +100,38 @@ export async function POST(req: NextRequest) {
           contentCompletedBy: userId,
         },
       })
+
+      // E-Mail an Publisher senden (nur wenn Status geändert wurde)
+      try {
+        const contentProvider = await prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            name: true,
+            email: true,
+          },
+        })
+
+        if (contentProvider) {
+          await sendContentProvidedNotificationEmail({
+            publisherEmail: booking.linkSource.publisher.email,
+            publisherName: booking.linkSource.publisher.name,
+            bookingId: booking.id,
+            linkSourceName: booking.linkSource.name,
+            linkSourceUrl: booking.linkSource.url,
+            clientBrand: booking.client.brand,
+            clientDomain: booking.client.domain,
+            targetUrl: booking.targetUrl,
+            anchorText: booking.anchorText,
+            publicationDate: booking.publicationDate,
+            contentProviderName: contentProvider.name,
+            contentProviderEmail: contentProvider.email,
+            fileName: file.name,
+          })
+        }
+      } catch (emailError: any) {
+        // E-Mail-Fehler nicht kritisch - Content wurde bereits hochgeladen
+        console.error("Fehler beim Senden der Content-Benachrichtigung:", emailError.message)
+      }
     }
 
     return NextResponse.json(contentAsset, { status: 201 })

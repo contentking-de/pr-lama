@@ -6,16 +6,26 @@ import SourceForm from "@/components/SourceForm"
 export default async function NewSourcePage() {
   const user = await requireRole(["ADMIN", "MEMBER"])
 
-  const publishers = await prisma.user.findMany({
-    where: {
-      role: "PUBLISHER",
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-  })
+  const [publishers, categories] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        role: "PUBLISHER",
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    }),
+    prisma.category.findMany({
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        name: true,
+      },
+    }).catch(() => []), // Fallback auf leeres Array falls Fehler
+  ])
 
   return (
     <Layout>
@@ -25,7 +35,7 @@ export default async function NewSourcePage() {
           <p className="text-gray-600 mt-2">Erstelle eine neue Linkquelle</p>
         </div>
 
-        <SourceForm publishers={publishers} userId={user.id} />
+        <SourceForm publishers={publishers} userId={user.id} categories={categories.map((c) => c.name)} />
       </div>
     </Layout>
   )

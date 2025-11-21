@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { put } from "@vercel/blob"
 import { z } from "zod"
+import { sendContentProvidedNotificationEmail } from "@/lib/email"
 
 const saveGeneratedContentSchema = z.object({
   bookingId: z.string().uuid(),
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { bookingId, content, fileName, contentType = "article" } = saveGeneratedContentSchema.parse(body)
 
-    // Buchung mit Publisher-Informationen laden
+    // Buchung mit allen benötigten Daten laden
     const booking = await prisma.linkBooking.findUnique({
       where: { id: bookingId },
       include: {
@@ -36,9 +37,16 @@ export async function POST(req: NextRequest) {
           include: {
             publisher: {
               select: {
+                email: true,
                 name: true,
               },
             },
+          },
+        },
+        client: {
+          select: {
+            brand: true,
+            domain: true,
           },
         },
       },
@@ -83,7 +91,8 @@ export async function POST(req: NextRequest) {
     })
 
     // Status auf CONTENT_PROVIDED setzen, wenn noch nicht gesetzt
-    if (booking.status === "CONTENT_PENDING") {
+    const wasContentPending = booking.status === "CONTENT_PENDING"
+    if (wasContentPending) {
       await prisma.linkBooking.update({
         where: { id: bookingId },
         data: {
@@ -91,6 +100,28 @@ export async function POST(req: NextRequest) {
           contentCompletedBy: session.user.id,
         },
       })
+
+      // E-Mail an Publisher senden (nur wenn Status geändert wurde)
+      try {
+        await sendContentProvidedNotificationEmail({
+          publisherEmail: booking.linkSource.publisher.email,
+          publisherName: booking.linkSource.publisher.name,
+          bookingId: booking.id,
+          linkSourceName: booking.linkSource.name,
+          linkSourceUrl: booking.linkSource.url,
+          clientBrand: booking.client.brand,
+          clientDomain: booking.client.domain,
+          targetUrl: booking.targetUrl,
+          anchorText: booking.anchorText,
+          publicationDate: booking.publicationDate,
+          contentProviderName: session.user.name || null,
+          contentProviderEmail: session.user.email,
+          fileName: generatedFileName,
+        })
+      } catch (emailError: any) {
+        // E-Mail-Fehler nicht kritisch - Content wurde bereits gespeichert
+        console.error("Fehler beim Senden der Content-Benachrichtigung:", emailError.message)
+      }
     }
 
     return NextResponse.json(contentAsset, { status: 201 })

@@ -27,9 +27,10 @@ interface SourceFormProps {
   publishers: Publisher[]
   userId: string
   source?: Source
+  categories?: string[]
 }
 
-export default function SourceForm({ publishers, userId, source }: SourceFormProps) {
+export default function SourceForm({ publishers, userId, source, categories = [] }: SourceFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -160,14 +161,32 @@ export default function SourceForm({ publishers, userId, source }: SourceFormPro
           <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
             Kategorie *
           </label>
-          <input
-            type="text"
-            id="category"
-            required
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          {categories.length > 0 ? (
+            <select
+              id="category"
+              required
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Bitte wählen</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              id="category"
+              required
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Kategorie eingeben"
+            />
+          )}
         </div>
 
         <div>

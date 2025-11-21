@@ -17,7 +17,12 @@ export default async function ContentPage({
 
   const booking = await prisma.linkBooking.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      targetUrl: true,
+      anchorText: true,
+      publicationDate: true,
+      status: true,
       linkSource: {
         select: {
           name: true,
@@ -66,6 +71,38 @@ export default async function ContentPage({
           <p className="text-gray-600 mt-2">
             {booking.linkSource.name} - {booking.client.brand}
           </p>
+        </div>
+
+        {/* Buchungsdetails */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Buchungsdetails</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ziel-URL</label>
+              <a
+                href={booking.targetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-blue-600 hover:text-blue-900 break-all"
+              >
+                {booking.targetUrl}
+              </a>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Anchor-Text</label>
+              <p className="text-sm text-gray-900">{booking.anchorText}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Veröffentlichungsdatum</label>
+              <p className="text-sm text-gray-900">
+                {new Date(booking.publicationDate).toLocaleDateString("de-DE", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </p>
+            </div>
+          </div>
         </div>
 
         <AIContentGenerator bookingId={id} />

@@ -31,16 +31,26 @@ export default async function EditSourcePage({
     notFound()
   }
 
-  const publishers = await prisma.user.findMany({
-    where: {
-      role: "PUBLISHER",
-    },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-  })
+  const [publishers, categories] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        role: "PUBLISHER",
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    }),
+    prisma.category.findMany({
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        name: true,
+      },
+    }).catch(() => []), // Fallback auf leeres Array falls Fehler
+  ])
 
   // Serialisiere source für Client Component (konvertiere Decimal zu number)
   const serializedSource = {
@@ -56,7 +66,7 @@ export default async function EditSourcePage({
           <p className="text-gray-600 mt-2">{source.name}</p>
         </div>
 
-        <SourceForm publishers={publishers} userId={user.id} source={serializedSource} />
+        <SourceForm publishers={publishers} userId={user.id} source={serializedSource} categories={categories.map((c) => c.name)} />
       </div>
     </Layout>
   )

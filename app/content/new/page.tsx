@@ -14,7 +14,12 @@ export default async function NewContentPage() {
         in: ["CONTENT_PENDING", "CONTENT_PROVIDED"],
       },
     },
-    include: {
+    select: {
+      id: true,
+      targetUrl: true,
+      anchorText: true,
+      publicationDate: true,
+      status: true,
       linkSource: {
         select: {
           name: true,
@@ -54,13 +59,38 @@ export default async function NewContentPage() {
               <div className="space-y-4">
                 {bookings.map((booking) => (
                   <div key={booking.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-gray-700">
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">
                         {booking.linkSource.name} - {booking.client.brand}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Status: {booking.status === "CONTENT_PENDING" ? "Content ausstehend" : "Content bereitgestellt"}
-                      </p>
+                      <div className="space-y-2 text-xs text-gray-600">
+                        <div>
+                          <span className="font-medium">Ziel-URL:</span>{" "}
+                          <a
+                            href={booking.targetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-900 break-all"
+                          >
+                            {booking.targetUrl}
+                          </a>
+                        </div>
+                        <div>
+                          <span className="font-medium">Anchor-Text:</span> {booking.anchorText}
+                        </div>
+                        <div>
+                          <span className="font-medium">Veröffentlichungsdatum:</span>{" "}
+                          {new Date(booking.publicationDate).toLocaleDateString("de-DE", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </div>
+                        <div>
+                          <span className="font-medium">Status:</span>{" "}
+                          {booking.status === "CONTENT_PENDING" ? "Content ausstehend" : "Content bereitgestellt"}
+                        </div>
+                      </div>
                     </div>
                     <AIContentGenerator bookingId={booking.id} />
                   </div>

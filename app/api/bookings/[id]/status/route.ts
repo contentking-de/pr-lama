@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import { sendBookingAcceptedNotificationEmail } from "@/lib/email"
 
 const statusUpdateSchema = z.object({
   status: z.enum([
@@ -29,7 +30,22 @@ export async function PUT(
     const booking = await prisma.linkBooking.findUnique({
       where: { id },
       include: {
-        linkSource: true,
+        linkSource: {
+          include: {
+            publisher: {
+              select: {
+                email: true,
+                name: true,
+              },
+            },
+          },
+        },
+        client: {
+          select: {
+            brand: true,
+            domain: true,
+          },
+        },
       },
     })
 
@@ -109,7 +125,48 @@ export async function PUT(
       data: updateData,
     })
 
-    // TODO: E-Mail-Benachrichtigungen senden
+    // E-Mail an alle ADMIN und MEMBER senden, wenn Publisher die Buchung akzeptiert hat
+    if (
+      session.user.role === "PUBLISHER" &&
+      booking.status === "REQUESTED" &&
+      (finalStatus === "ACCEPTED" || finalStatus === "CONTENT_PENDING")
+    ) {
+      try {
+        // Hole alle ADMIN und MEMBER E-Mail-Adressen
+        const adminMembers = await prisma.user.findMany({
+          where: {
+            role: {
+              in: ["ADMIN", "MEMBER"],
+            },
+          },
+          select: {
+            email: true,
+          },
+        })
+
+        const adminMemberEmails = adminMembers.map((user) => user.email)
+
+        if (adminMemberEmails.length > 0) {
+          await sendBookingAcceptedNotificationEmail({
+            adminMemberEmails,
+            publisherName: booking.linkSource.publisher.name,
+            publisherEmail: booking.linkSource.publisher.email,
+            bookingId: booking.id,
+            linkSourceName: booking.linkSource.name,
+            linkSourceUrl: booking.linkSource.url,
+            clientBrand: booking.client.brand,
+            clientDomain: booking.client.domain,
+            targetUrl: booking.targetUrl,
+            anchorText: booking.anchorText,
+            publicationDate: booking.publicationDate,
+            publisherProducesContent: publisherProducesContent || false,
+          })
+        }
+      } catch (emailError: any) {
+        // E-Mail-Fehler nicht kritisch - Buchung wurde bereits aktualisiert
+        console.error("Fehler beim Senden der Akzeptierungs-Benachrichtigung:", emailError.message)
+      }
+    }
 
     return NextResponse.json(updatedBooking)
   } catch (error: any) {

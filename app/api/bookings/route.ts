@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import { sendBookingNotificationEmail } from "@/lib/email"
 
 const bookingSchema = z.object({
   linkSourceId: z.string().uuid(),
@@ -34,10 +35,41 @@ export async function POST(req: NextRequest) {
             publisher: true,
           },
         },
+        client: {
+          select: {
+            brand: true,
+            domain: true,
+          },
+        },
+        requester: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
       },
     })
 
-    // TODO: E-Mail an Publisher senden
+    // E-Mail an Publisher senden (im Hintergrund, blockiert nicht die Antwort)
+    try {
+      await sendBookingNotificationEmail({
+        publisherEmail: booking.linkSource.publisher.email,
+        publisherName: booking.linkSource.publisher.name,
+        bookingId: booking.id,
+        linkSourceName: booking.linkSource.name,
+        linkSourceUrl: booking.linkSource.url,
+        clientBrand: booking.client.brand,
+        clientDomain: booking.client.domain,
+        targetUrl: booking.targetUrl,
+        anchorText: booking.anchorText,
+        publicationDate: booking.publicationDate,
+        requesterName: booking.requester.name,
+        requesterEmail: booking.requester.email,
+      })
+    } catch (emailError: any) {
+      // E-Mail-Fehler nicht kritisch - Buchung wurde bereits erstellt
+      console.error("Fehler beim Senden der E-Mail-Benachrichtigung:", emailError.message)
+    }
 
     return NextResponse.json(booking, { status: 201 })
   } catch (error: any) {

@@ -51,19 +51,37 @@ export default function UpdateSistrixButton({ sourceId, onUpdate }: UpdateSistri
   }
 
   return (
-    <div className="space-y-2">
+    <div className="relative">
       <button
         onClick={handleUpdate}
         disabled={isLoading}
-        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Sistrix Index aktualisieren"
       >
-        {isLoading ? "Wird aktualisiert..." : "Sistrix Index aktualisieren"}
+        <svg
+          className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+          />
+        </svg>
       </button>
       {error && (
-        <p className="text-xs text-red-600">{error}</p>
+        <div className="absolute top-full left-0 mt-1 px-2 py-1 text-xs text-red-600 bg-red-50 border border-red-200 rounded shadow-lg z-10 whitespace-nowrap">
+          {error}
+        </div>
       )}
       {success && (
-        <p className="text-xs text-green-600">Sichtbarkeitsindex erfolgreich aktualisiert!</p>
+        <div className="absolute top-full left-0 mt-1 px-2 py-1 text-xs text-green-600 bg-green-50 border border-green-200 rounded shadow-lg z-10 whitespace-nowrap">
+          Aktualisiert!
+        </div>
       )}
     </div>
   )
