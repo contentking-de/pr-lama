@@ -8,12 +8,12 @@ export const dynamic = "force-dynamic"
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   const user = await requireAuth()
 
   // Next.js 15+ verwendet Promise für searchParams
-  const resolvedSearchParams = searchParams instanceof Promise ? await searchParams : searchParams
+  const resolvedSearchParams = await searchParams
 
   // Extrahiere status aus searchParams (kann string oder string[] sein)
   const statusParam = resolvedSearchParams.status

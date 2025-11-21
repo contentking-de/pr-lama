@@ -7,7 +7,15 @@ export default async function DashboardPage() {
   const user = await requireAuth()
 
   // Statistiken basierend auf Rolle
-  let stats = {}
+  let stats: {
+    totalSources?: number
+    totalClients?: number
+    totalBookings?: number
+    pendingBookings?: number
+    mySources?: number
+    myBookings?: number
+    pendingRequests?: number
+  } = {}
   
   if (user.role === "ADMIN" || user.role === "MEMBER") {
     const [totalSources, totalClients, totalBookings, pendingBookings] = await Promise.all([
@@ -63,25 +71,25 @@ export default async function DashboardPage() {
             <>
               <StatCard
                 title="Linkquellen"
-                value={stats.totalSources}
+                value={stats.totalSources || 0}
                 description="Gesamt"
                 href="/sources"
               />
               <StatCard
                 title="Kunden"
-                value={stats.totalClients}
+                value={stats.totalClients || 0}
                 description="Gesamt"
                 href="/clients"
               />
               <StatCard
                 title="Buchungen"
-                value={stats.totalBookings}
+                value={stats.totalBookings || 0}
                 description="Gesamt"
                 href="/bookings"
               />
               <StatCard
                 title="Offene Anfragen"
-                value={stats.pendingBookings}
+                value={stats.pendingBookings || 0}
                 description="Warten auf Publisher"
                 href="/bookings?status=REQUESTED"
               />
@@ -90,19 +98,19 @@ export default async function DashboardPage() {
             <>
               <StatCard
                 title="Meine Linkquellen"
-                value={stats.mySources}
+                value={stats.mySources || 0}
                 description="Gesamt"
                 href="/sources"
               />
               <StatCard
                 title="Meine Buchungen"
-                value={stats.myBookings}
+                value={stats.myBookings || 0}
                 description="Gesamt"
                 href="/bookings"
               />
               <StatCard
                 title="Offene Anfragen"
-                value={stats.pendingRequests}
+                value={stats.pendingRequests || 0}
                 description="Warten auf Akzeptanz"
                 href="/bookings?status=REQUESTED"
               />

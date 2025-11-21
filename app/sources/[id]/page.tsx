@@ -7,12 +7,14 @@ import { notFound } from "next/navigation"
 export default async function SourceDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
   const user = await requireAuth()
 
+  const { id } = await params
+
   const source = await prisma.linkSource.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       publisher: {
         select: {

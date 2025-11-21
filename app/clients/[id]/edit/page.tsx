@@ -7,12 +7,14 @@ import { notFound } from "next/navigation"
 export default async function EditClientPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
   await requireRole(["ADMIN", "MEMBER"])
 
+  const { id } = await params
+
   const client = await prisma.client.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       contactPersons: true,
     },

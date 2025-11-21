@@ -8,12 +8,14 @@ import Link from "next/link"
 export default async function BookingDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
   const user = await requireAuth()
 
+  const { id } = await params
+
   const booking = await prisma.linkBooking.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       linkSource: {
         include: {

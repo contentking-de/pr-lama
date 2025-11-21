@@ -7,12 +7,14 @@ import { notFound } from "next/navigation"
 export default async function EditPublisherPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
   await requireRole(["ADMIN", "MEMBER"])
 
+  const { id } = await params
+
   const publisher = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
   })
 
   if (!publisher || publisher.role !== "PUBLISHER") {

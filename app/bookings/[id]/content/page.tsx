@@ -7,12 +7,14 @@ import { notFound } from "next/navigation"
 export default async function ContentPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
   const user = await requireRole(["ADMIN", "MEMBER"])
 
+  const { id } = await params
+
   const booking = await prisma.linkBooking.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       linkSource: {
         select: {
@@ -65,7 +67,7 @@ export default async function ContentPage({
           </p>
         </div>
 
-        <ContentUpload bookingId={params.id} userId={user.id} />
+        <ContentUpload bookingId={id} userId={user.id} />
 
         {booking.contentAssets.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6">

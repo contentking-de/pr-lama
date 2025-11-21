@@ -9,12 +9,12 @@ export const dynamic = "force-dynamic"
 export default async function ContentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }> | { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   await requireRole(["ADMIN", "MEMBER"])
 
   // Next.js 15+ verwendet Promise für searchParams
-  const resolvedSearchParams = searchParams instanceof Promise ? await searchParams : searchParams
+  const resolvedSearchParams = await searchParams
 
   const bookingFilter = Array.isArray(resolvedSearchParams.booking)
     ? resolvedSearchParams.booking[0]

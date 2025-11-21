@@ -6,8 +6,9 @@ import Link from "next/link"
 export default async function SourcesPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
+  const resolvedSearchParams = await searchParams
   const user = await requireRole(["ADMIN", "MEMBER", "PUBLISHER"])
 
   // Publisher sehen nur eigene Quellen

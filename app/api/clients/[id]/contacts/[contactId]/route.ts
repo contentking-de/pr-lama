@@ -11,7 +11,7 @@ const contactSchema = z.object({
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string; contactId: string } }
+  { params }: { params: Promise<{ id: string; contactId: string }> }
 ) {
   try {
     const session = await auth()
@@ -19,11 +19,13 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const { id, contactId } = await params
+
     const contact = await prisma.contactPerson.findUnique({
-      where: { id: params.contactId },
+      where: { id: contactId },
     })
 
-    if (!contact || contact.clientId !== params.id) {
+    if (!contact || contact.clientId !== id) {
       return NextResponse.json({ error: "Contact not found" }, { status: 404 })
     }
 
@@ -31,7 +33,7 @@ export async function PUT(
     const validatedData = contactSchema.parse(body)
 
     const updatedContact = await prisma.contactPerson.update({
-      where: { id: params.contactId },
+      where: { id: contactId },
       data: validatedData,
     })
 
@@ -46,7 +48,7 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string; contactId: string } }
+  { params }: { params: Promise<{ id: string; contactId: string }> }
 ) {
   try {
     const session = await auth()
@@ -54,16 +56,18 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const { id, contactId } = await params
+
     const contact = await prisma.contactPerson.findUnique({
-      where: { id: params.contactId },
+      where: { id: contactId },
     })
 
-    if (!contact || contact.clientId !== params.id) {
+    if (!contact || contact.clientId !== id) {
       return NextResponse.json({ error: "Contact not found" }, { status: 404 })
     }
 
     await prisma.contactPerson.delete({
-      where: { id: params.contactId },
+      where: { id: contactId },
     })
 
     return NextResponse.json({ success: true })

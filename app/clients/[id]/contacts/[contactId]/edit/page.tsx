@@ -7,18 +7,20 @@ import { notFound } from "next/navigation"
 export default async function EditContactPage({
   params,
 }: {
-  params: { id: string; contactId: string }
+  params: Promise<{ id: string; contactId: string }>
 }) {
   await requireRole(["ADMIN", "MEMBER"])
 
+  const { id, contactId } = await params
+
   const contact = await prisma.contactPerson.findUnique({
-    where: { id: params.contactId },
+    where: { id: contactId },
     include: {
       client: true,
     },
   })
 
-  if (!contact || contact.clientId !== params.id) {
+  if (!contact || contact.clientId !== id) {
     notFound()
   }
 
@@ -30,7 +32,7 @@ export default async function EditContactPage({
           <p className="text-gray-600 mt-2">{contact.name} - {contact.client.brand}</p>
         </div>
 
-        <ContactForm clientId={params.id} contact={contact} />
+        <ContactForm clientId={id} contact={contact} />
       </div>
     </Layout>
   )

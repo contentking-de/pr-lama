@@ -7,12 +7,14 @@ import { notFound } from "next/navigation"
 export default async function EditUserPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
   await requireRole(["ADMIN"])
 
+  const { id } = await params
+
   const user = await prisma.user.findUnique({
-    where: { id: params.id },
+    where: { id },
   })
 
   if (!user) {

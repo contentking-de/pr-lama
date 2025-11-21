@@ -1,4 +1,4 @@
-import type { NextAuthOptions } from "next-auth"
+import type { NextAuthConfig } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import type { EmailConfig } from "next-auth/providers/email"
 import { prisma } from "./prisma"
@@ -52,7 +52,7 @@ const customEmailProvider: EmailConfig = {
       },
 }
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthConfig = {
   adapter: PrismaAdapter(prisma) as any,
   providers: [
     customEmailProvider as any,

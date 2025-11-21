@@ -7,12 +7,14 @@ import { notFound } from "next/navigation"
 export default async function NewContactPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
   await requireRole(["ADMIN", "MEMBER"])
 
+  const { id } = await params
+
   const client = await prisma.client.findUnique({
-    where: { id: params.id },
+    where: { id },
   })
 
   if (!client) {
@@ -27,7 +29,7 @@ export default async function NewContactPage({
           <p className="text-gray-600 mt-2">Für {client.brand}</p>
         </div>
 
-        <ContactForm clientId={params.id} />
+        <ContactForm clientId={id} />
       </div>
     </Layout>
   )

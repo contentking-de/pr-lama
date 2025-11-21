@@ -57,17 +57,21 @@ export async function GET(req: NextRequest) {
 
     const statusFilter = req.nextUrl.searchParams.get("status")
 
-    const where =
+    const validStatuses = ["REQUESTED", "ACCEPTED", "CONTENT_PENDING", "CONTENT_PROVIDED", "PUBLISHED"]
+    const isValidStatus = statusFilter && validStatuses.includes(statusFilter)
+
+    const where: any =
       session.user.role === "PUBLISHER"
         ? {
             linkSource: {
               publisherId: session.user.id,
             },
-            ...(statusFilter ? { status: statusFilter } : {}),
           }
-        : {
-            ...(statusFilter ? { status: statusFilter } : {}),
-          }
+        : {}
+
+    if (isValidStatus && statusFilter) {
+      where.status = statusFilter as any
+    }
 
     const bookings = await prisma.linkBooking.findMany({
       where,

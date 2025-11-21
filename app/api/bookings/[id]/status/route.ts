@@ -16,7 +16,7 @@ const statusUpdateSchema = z.object({
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -24,8 +24,10 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const { id } = await params
+
     const booking = await prisma.linkBooking.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         linkSource: true,
       },
@@ -94,7 +96,7 @@ export async function PUT(
     }
 
     const updatedBooking = await prisma.linkBooking.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
     })
 
