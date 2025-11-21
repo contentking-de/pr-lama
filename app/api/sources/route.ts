@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import { getSistrixVisibilityIndex } from "@/lib/sistrix"
 
 const sourceSchema = z.object({
   name: z.string().min(1),
@@ -31,7 +32,30 @@ export async function POST(req: NextRequest) {
       data: validatedData,
     })
 
-    return NextResponse.json(source, { status: 201 })
+    // Automatisch Sistrix Sichtbarkeitsindex abrufen (im Hintergrund, ohne das Erstellen zu blockieren)
+    try {
+      const visibilityIndex = await getSistrixVisibilityIndex(source.url)
+      
+      if (visibilityIndex !== null) {
+        await prisma.linkSource.update({
+          where: { id: source.id },
+          data: {
+            sistrixVisibilityIndex: visibilityIndex,
+            sistrixLastUpdated: new Date(),
+          },
+        })
+      }
+    } catch (error: any) {
+      // Fehler beim Abrufen des Sichtbarkeitsindex nicht kritisch - Linkquelle wurde bereits erstellt
+      console.error(`Fehler beim automatischen Abrufen des Sistrix Index für ${source.url}:`, error.message)
+    }
+
+    // Lade die aktualisierte Quelle (mit Sistrix Index falls verfügbar)
+    const updatedSource = await prisma.linkSource.findUnique({
+      where: { id: source.id },
+    })
+
+    return NextResponse.json(updatedSource, { status: 201 })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 })

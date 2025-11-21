@@ -220,43 +220,52 @@ export default async function BookingDetailPage({
 
         <BookingActions booking={serializedBooking} user={user} />
 
-        {booking.status === "CONTENT_PENDING" && (user.role === "ADMIN" || user.role === "MEMBER") && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Content-Assets</h2>
-            <Link
-              href={`/bookings/${booking.id}/content`}
-              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mb-4"
-            >
-              Content hochladen
-            </Link>
-            {booking.contentAssets.length > 0 && (
-              <div className="space-y-2 mt-4">
-                {booking.contentAssets.map((asset) => (
-                  <div
-                    key={asset.id}
-                    className="flex justify-between items-center p-3 border border-gray-200 rounded-md"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{asset.fileName}</p>
-                      <p className="text-xs text-gray-500">
-                        Hochgeladen von {asset.uploader.name || asset.uploader.email} am{" "}
-                        {new Date(asset.createdAt).toLocaleDateString("de-DE")}
-                      </p>
-                    </div>
-                    <a
-                      href={asset.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:text-blue-900"
+        {(booking.status === "CONTENT_PENDING" || booking.status === "CONTENT_PROVIDED") &&
+          (user.role === "ADMIN" || user.role === "MEMBER") && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Content-Assets</h2>
+              <Link
+                href={`/bookings/${booking.id}/content`}
+                className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mb-4"
+              >
+                Content hochladen
+              </Link>
+              {booking.contentAssets.length > 0 && (
+                <div className="space-y-2 mt-4">
+                  {booking.contentAssets.map((asset) => (
+                    <div
+                      key={asset.id}
+                      className="flex justify-between items-center p-3 border border-gray-200 rounded-md"
                     >
-                      Download
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{asset.fileName}</p>
+                        <p className="text-xs text-gray-500">
+                          Hochgeladen von {asset.uploader.name || asset.uploader.email} am{" "}
+                          {new Date(asset.createdAt).toLocaleDateString("de-DE")}
+                        </p>
+                      </div>
+                      <div className="flex gap-3">
+                        <a
+                          href={asset.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-900"
+                        >
+                          Download
+                        </a>
+                        <Link
+                          href={`/content/${asset.id}/edit`}
+                          className="text-sm text-green-600 hover:text-green-900"
+                        >
+                          Bearbeiten
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
       </div>
     </Layout>
   )

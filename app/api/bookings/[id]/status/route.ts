@@ -40,48 +40,57 @@ export async function PUT(
     const body = await req.json()
     const { status, publisherProducesContent } = statusUpdateSchema.parse(body)
 
-    // Publisher kann nur eigene Buchungen akzeptieren
+    // Publisher kann nur eigene Buchungen bearbeiten
     if (session.user.role === "PUBLISHER") {
       if (booking.linkSource.publisherId !== session.user.id) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 })
       }
-      if (booking.status !== "REQUESTED" || status !== "ACCEPTED") {
-        return NextResponse.json({ error: "Invalid status transition" }, { status: 400 })
+      // Publisher kann REQUESTED -> ACCEPTED/CONTENT_PENDING oder ACCEPTED/CONTENT_PROVIDED -> PUBLISHED
+      if (
+        !(
+          (booking.status === "REQUESTED" && status === "ACCEPTED") ||
+          (booking.status === "ACCEPTED" && status === "PUBLISHED") ||
+          (booking.status === "CONTENT_PROVIDED" && status === "PUBLISHED")
+        )
+      ) {
+        return NextResponse.json({ error: "Invalid status transition for publisher" }, { status: 400 })
       }
     }
 
-    // Status-Übergänge validieren
+    // Wenn Publisher Content produziert: Status ACCEPTED
+    // Wenn Publisher keinen Content produziert: Status direkt CONTENT_PENDING
+    let finalStatus = status
+    if (status === "ACCEPTED" && session.user.role === "PUBLISHER") {
+      if (publisherProducesContent === true) {
+        // Publisher produziert Content: Status bleibt ACCEPTED
+        finalStatus = "ACCEPTED"
+      } else {
+        // Publisher produziert keinen Content: Status direkt CONTENT_PENDING
+        finalStatus = "CONTENT_PENDING"
+      }
+    }
+
+    // Status-Übergänge validieren (nach der Logik-Anpassung)
     const validTransitions: Record<string, string[]> = {
-      REQUESTED: ["ACCEPTED"],
+      REQUESTED: ["ACCEPTED", "CONTENT_PENDING"], // CONTENT_PENDING ist jetzt auch möglich
       ACCEPTED: ["CONTENT_PENDING", "PUBLISHED"],
       CONTENT_PENDING: ["CONTENT_PROVIDED"],
       CONTENT_PROVIDED: ["PUBLISHED"],
       PUBLISHED: [],
     }
 
-    if (!validTransitions[booking.status]?.includes(status)) {
+    if (!validTransitions[booking.status]?.includes(finalStatus)) {
       return NextResponse.json(
-        { error: `Invalid status transition from ${booking.status} to ${status}` },
+        { error: `Invalid status transition from ${booking.status} to ${finalStatus}` },
         { status: 400 }
       )
-    }
-
-    // Wenn Publisher Content produziert, überspringe CONTENT_PENDING
-    let finalStatus = status
-    if (
-      status === "ACCEPTED" &&
-      publisherProducesContent === true &&
-      session.user.role === "PUBLISHER"
-    ) {
-      // Status bleibt ACCEPTED, kann später direkt zu PUBLISHED
-    } else if (status === "ACCEPTED" && publisherProducesContent === false) {
-      finalStatus = "CONTENT_PENDING"
     }
 
     const updateData: any = {
       status: finalStatus,
     }
 
+    // Wenn Publisher akzeptiert (egal ob ACCEPTED oder CONTENT_PENDING)
     if (status === "ACCEPTED" && session.user.role === "PUBLISHER") {
       updateData.acceptedBy = session.user.id
       updateData.publisherProducesContent = publisherProducesContent || false
@@ -91,7 +100,7 @@ export async function PUT(
       updateData.contentCompletedBy = session.user.id
     }
 
-    if (finalStatus === "PUBLISHED" && (session.user.role === "ADMIN" || session.user.role === "MEMBER")) {
+    if (finalStatus === "PUBLISHED") {
       updateData.publishedBy = session.user.id
     }
 

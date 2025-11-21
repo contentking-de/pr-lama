@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import Link from "next/link"
+import UpdateSistrixButton from "@/components/UpdateSistrixButton"
 
 export default async function SourcesPage({
   searchParams,
@@ -82,6 +83,9 @@ export default async function SourcesPage({
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Verfügbarkeit
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Sistrix Index
+                </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Aktionen
                 </th>
@@ -120,6 +124,27 @@ export default async function SourcesPage({
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                       {source.availability}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-2">
+                      {source.sistrixVisibilityIndex !== null && source.sistrixVisibilityIndex !== undefined ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">
+                          {(source.sistrixVisibilityIndex / 10000).toFixed(4)}
+                        </span>
+                          {source.sistrixLastUpdated && (
+                            <span className="text-xs text-gray-500">
+                              ({new Date(source.sistrixLastUpdated).toLocaleDateString("de-DE")})
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">Nicht verfügbar</span>
+                      )}
+                      {(user.role === "ADMIN" || user.role === "MEMBER") && (
+                        <UpdateSistrixButton sourceId={source.id} />
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <Link

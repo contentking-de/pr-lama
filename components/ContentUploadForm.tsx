@@ -91,19 +91,6 @@ export default function ContentUploadForm({ bookings, userId }: ContentUploadFor
       fileInput.value = ""
       setSelectedBookingId("")
 
-      // Status auf CONTENT_PROVIDED setzen, wenn Content hochgeladen wurde
-      setTimeout(() => {
-        fetch(`/api/bookings/${selectedBookingId}/status`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            status: "CONTENT_PROVIDED",
-          }),
-        })
-      }, 1000)
-
       setTimeout(() => {
         router.push("/content")
       }, 1500)

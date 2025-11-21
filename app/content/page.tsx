@@ -90,6 +90,26 @@ export default async function ContentPage({
     },
   })
 
+  // Gruppiere Content-Assets nach bookingId
+  const groupedAssets = contentAssets.reduce((acc, asset) => {
+    const bookingId = asset.bookingId
+    if (!acc[bookingId]) {
+      acc[bookingId] = {
+        booking: asset.booking,
+        assets: [],
+      }
+    }
+    acc[bookingId].assets.push(asset)
+    return acc
+  }, {} as Record<string, { booking: typeof contentAssets[0]["booking"]; assets: typeof contentAssets }>)
+
+  // Konvertiere zu Array und sortiere nach neuestem Asset
+  const groupedAssetsArray = Object.values(groupedAssets).sort((a, b) => {
+    const aLatest = Math.max(...a.assets.map((asset) => new Date(asset.createdAt).getTime()))
+    const bLatest = Math.max(...b.assets.map((asset) => new Date(asset.createdAt).getTime()))
+    return bLatest - aLatest
+  })
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -138,75 +158,113 @@ export default async function ContentPage({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {contentAssets.map((asset) => (
-                <tr key={asset.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{asset.fileName}</div>
+              {groupedAssetsArray.map((group) => (
+                <tr key={group.booking.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div className="space-y-1">
+                      {group.assets.map((asset) => (
+                        <div key={asset.id} className="text-sm font-medium text-gray-900">
+                          {asset.fileName}
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <Link
-                      href={`/bookings/${asset.booking.id}`}
+                      href={`/bookings/${group.booking.id}`}
                       className="text-sm text-blue-600 hover:text-blue-900"
                     >
-                      {asset.booking.linkSource.name} - {asset.booking.client.brand}
+                      {group.booking.linkSource.name} - {group.booking.client.brand}
                     </Link>
-                    <div className="text-xs text-gray-500">{asset.booking.client.domain}</div>
+                    <div className="text-xs text-gray-500">{group.booking.client.domain}</div>
+                    <div className="text-xs text-gray-400 mt-1 font-mono">
+                      ID: {group.booking.id}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        asset.booking.status === "CONTENT_PROVIDED"
+                        group.booking.status === "CONTENT_PROVIDED"
                           ? "bg-purple-100 text-purple-800"
-                          : asset.booking.status === "CONTENT_PENDING"
+                          : group.booking.status === "CONTENT_PENDING"
                           ? "bg-orange-100 text-orange-800"
                           : "bg-gray-100 text-gray-800"
                       }`}
                     >
-                      {asset.booking.status}
+                      {group.booking.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded">
-                      {asset.fileType.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {asset.uploader.name || asset.uploader.email}
+                  <td className="px-6 py-4">
+                    <div className="space-y-1">
+                      {group.assets.map((asset) => (
+                        <span
+                          key={asset.id}
+                          className="px-2 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded block"
+                        >
+                          {asset.fileType.toUpperCase()}
+                        </span>
+                      ))}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(asset.createdAt).toLocaleDateString("de-DE")}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(asset.createdAt).toLocaleTimeString("de-DE", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                  <td className="px-6 py-4">
+                    <div className="space-y-1">
+                      {group.assets.map((asset) => (
+                        <div key={asset.id} className="text-sm text-gray-900">
+                          {asset.uploader.name || asset.uploader.email}
+                        </div>
+                      ))}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a
-                      href={asset.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-900 mr-4"
-                    >
-                      Download
-                    </a>
-                    <Link
-                      href={`/bookings/${asset.booking.id}`}
-                      className="text-indigo-600 hover:text-indigo-900"
-                    >
-                      Zur Buchung
-                    </Link>
+                  <td className="px-6 py-4">
+                    <div className="space-y-1">
+                      {group.assets.map((asset) => (
+                        <div key={asset.id}>
+                          <div className="text-sm text-gray-900">
+                            {new Date(asset.createdAt).toLocaleDateString("de-DE")}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(asset.createdAt).toLocaleTimeString("de-DE", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right text-sm font-medium">
+                    <div className="flex flex-col items-end gap-2">
+                      {group.assets.map((asset) => (
+                        <div key={asset.id} className="flex items-center gap-3">
+                          <a
+                            href={asset.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            Download
+                          </a>
+                          <Link
+                            href={`/content/${asset.id}/edit`}
+                            className="text-green-600 hover:text-green-900"
+                          >
+                            Bearbeiten
+                          </Link>
+                        </div>
+                      ))}
+                      <Link
+                        href={`/bookings/${group.booking.id}`}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        Zur Buchung
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {contentAssets.length === 0 && (
+          {groupedAssetsArray.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500">Keine Content-Assets gefunden.</p>
             </div>

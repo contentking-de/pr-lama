@@ -1,7 +1,8 @@
 import { requireAuth } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
-import { redirect } from "next/navigation"
+import BookingsChart from "@/components/BookingsChart"
+import ContentStatusChart from "@/components/ContentStatusChart"
 
 export default async function DashboardPage() {
   const user = await requireAuth()
@@ -12,17 +13,78 @@ export default async function DashboardPage() {
     totalClients?: number
     totalBookings?: number
     pendingBookings?: number
+    totalPublishers?: number
+    bookingsData?: { date: string; count: number }[]
+    contentData?: { name: string; pending: number; provided: number }[]
     mySources?: number
     myBookings?: number
     pendingRequests?: number
   } = {}
   
   if (user.role === "ADMIN" || user.role === "MEMBER") {
-    const [totalSources, totalClients, totalBookings, pendingBookings] = await Promise.all([
+    const [
+      totalSources,
+      totalClients,
+      totalBookings,
+      pendingBookings,
+      totalPublishers,
+      bookingsData,
+      contentData,
+    ] = await Promise.all([
       prisma.linkSource.count(),
       prisma.client.count(),
       prisma.linkBooking.count(),
       prisma.linkBooking.count({ where: { status: "REQUESTED" } }),
+      prisma.user.count({ where: { role: "PUBLISHER" } }),
+      // Buchungen im zeitlichen Verlauf (letzte 12 Monate)
+      (async () => {
+        const now = new Date()
+        const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+        
+        const bookings = await prisma.linkBooking.findMany({
+          where: {
+            createdAt: {
+              gte: twelveMonthsAgo,
+            },
+          },
+          select: {
+            createdAt: true,
+          },
+        })
+
+        // Gruppiere nach Monat
+        const monthlyData: Record<string, number> = {}
+        bookings.forEach((booking) => {
+          const date = new Date(booking.createdAt)
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+          monthlyData[monthKey] = (monthlyData[monthKey] || 0) + 1
+        })
+
+        // Erstelle Array für die letzten 12 Monate
+        const result = []
+        for (let i = 11; i >= 0; i--) {
+          const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+          const monthName = date.toLocaleDateString("de-DE", { month: "short", year: "numeric" })
+          result.push({
+            date: monthName,
+            count: monthlyData[monthKey] || 0,
+          })
+        }
+        return result
+      })(),
+      // Content nach Status
+      (async () => {
+        const pending = await prisma.linkBooking.count({
+          where: { status: "CONTENT_PENDING" },
+        })
+        const provided = await prisma.linkBooking.count({
+          where: { status: "CONTENT_PROVIDED" },
+        })
+        return [
+          { name: "Content Status", pending, provided },
+        ]
+      })(),
     ])
     
     stats = {
@@ -30,6 +92,9 @@ export default async function DashboardPage() {
       totalClients,
       totalBookings,
       pendingBookings,
+      totalPublishers,
+      bookingsData,
+      contentData,
     }
   } else if (user.role === "PUBLISHER") {
     const [mySources, myBookings, pendingRequests] = await Promise.all([
@@ -76,10 +141,10 @@ export default async function DashboardPage() {
                 href="/sources"
               />
               <StatCard
-                title="Kunden"
-                value={stats.totalClients || 0}
+                title="Publisher"
+                value={stats.totalPublishers || 0}
                 description="Gesamt"
-                href="/clients"
+                href="/publishers"
               />
               <StatCard
                 title="Buchungen"
@@ -117,6 +182,37 @@ export default async function DashboardPage() {
             </>
           )}
         </div>
+
+        {/* Charts für ADMIN/MEMBER */}
+        {(user.role === "ADMIN" || user.role === "MEMBER") && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Buchungen im zeitlichen Verlauf */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Buchungen im zeitlichen Verlauf
+              </h2>
+              {stats.bookingsData && stats.bookingsData.length > 0 ? (
+                <BookingsChart data={stats.bookingsData} />
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  Keine Daten verfügbar
+                </div>
+              )}
+            </div>
+
+            {/* Content Status */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Content Status</h2>
+              {stats.contentData && stats.contentData.length > 0 ? (
+                <ContentStatusChart data={stats.contentData} />
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  Keine Daten verfügbar
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Schnellzugriff</h2>

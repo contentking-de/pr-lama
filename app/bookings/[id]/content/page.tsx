@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import ContentUpload from "@/components/ContentUpload"
+import AIContentGenerator from "@/components/AIContentGenerator"
 import { notFound } from "next/navigation"
 
 export default async function ContentPage({
@@ -46,12 +47,11 @@ export default async function ContentPage({
     notFound()
   }
 
-  if (booking.status !== "CONTENT_PENDING") {
+  if (booking.status !== "CONTENT_PENDING" && booking.status !== "CONTENT_PROVIDED") {
     return (
       <Layout>
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-md">
-          Diese Buchung ist nicht im Status CONTENT_PENDING. Content kann nur für Buchungen im
-          Status CONTENT_PENDING hochgeladen werden.
+          Content kann nur für Buchungen im Status CONTENT_PENDING oder CONTENT_PROVIDED hochgeladen werden.
         </div>
       </Layout>
     )
@@ -66,6 +66,8 @@ export default async function ContentPage({
             {booking.linkSource.name} - {booking.client.brand}
           </p>
         </div>
+
+        <AIContentGenerator bookingId={id} />
 
         <ContentUpload bookingId={id} userId={user.id} />
 
@@ -85,14 +87,22 @@ export default async function ContentPage({
                       {new Date(asset.createdAt).toLocaleDateString("de-DE")}
                     </p>
                   </div>
-                  <a
-                    href={asset.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:text-blue-900"
-                  >
-                    Download
-                  </a>
+                  <div className="flex gap-3">
+                    <a
+                      href={asset.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-900"
+                    >
+                      Download
+                    </a>
+                    <Link
+                      href={`/content/${asset.id}/edit`}
+                      className="text-sm text-green-600 hover:text-green-900"
+                    >
+                      Bearbeiten
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>

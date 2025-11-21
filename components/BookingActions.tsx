@@ -26,6 +26,7 @@ export default function BookingActions({ booking, user }: BookingActionsProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [publisherProducesContent, setPublisherProducesContent] = useState(false)
 
   const handleStatusChange = async (newStatus: string, publisherProducesContent?: boolean) => {
     setIsLoading(true)
@@ -56,49 +57,92 @@ export default function BookingActions({ booking, user }: BookingActionsProps) {
     }
   }
 
-  // Publisher kann nur REQUESTED Buchungen akzeptieren
+  // Publisher kann REQUESTED Buchungen akzeptieren/ablehnen und ACCEPTED/CONTENT_PROVIDED als veröffentlicht markieren
   if (user.role === "PUBLISHER" && booking.linkSource.publisherId === user.id) {
     if (booking.status === "REQUESTED") {
       return (
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Aktionen</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Buchung bearbeiten</h2>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md mb-4">
               {error}
             </div>
           )}
-          <div className="space-y-3">
-            <div className="flex items-center">
+          <div className="space-y-4">
+            <div className="flex items-start">
               <input
                 type="checkbox"
                 id="publisherProducesContent"
-                className="mr-2"
-                onChange={(e) => {
-                  // Checkbox wird beim Akzeptieren berücksichtigt
-                }}
+                checked={publisherProducesContent}
+                onChange={(e) => setPublisherProducesContent(e.target.checked)}
+                className="mt-1 mr-2"
               />
-              <label htmlFor="publisherProducesContent" className="text-sm text-gray-700">
-                Publisher produziert Content
+              <label htmlFor="publisherProducesContent" className="text-sm text-gray-700 cursor-pointer">
+                <span className="font-medium">Ich produziere den Content selbst</span>
+                <p className="text-xs text-gray-500 mt-1">
+                  Wenn angehakt: Status wird auf ACCEPTED gesetzt. Wenn nicht angehakt: Status wird auf CONTENT_PENDING gesetzt und Content muss geliefert werden.
+                </p>
               </label>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-2 border-t border-gray-200">
               <button
                 onClick={() => {
-                  const checkbox = document.getElementById(
-                    "publisherProducesContent"
-                  ) as HTMLInputElement
-                  handleStatusChange("ACCEPTED", checkbox.checked)
+                  handleStatusChange("ACCEPTED", publisherProducesContent)
                 }}
                 disabled={isLoading}
                 className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? "Wird verarbeitet..." : "Anfrage akzeptieren"}
               </button>
+              <button
+                onClick={() => {
+                  if (confirm("Möchtest du diese Buchung wirklich ablehnen?")) {
+                    // TODO: Ablehnungs-Logik implementieren (z.B. Status REJECTED oder Kommentar)
+                    alert("Ablehnungs-Funktion wird noch implementiert")
+                  }
+                }}
+                disabled={isLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Ablehnen
+              </button>
             </div>
           </div>
         </div>
       )
     }
+
+    // Publisher kann ACCEPTED oder CONTENT_PROVIDED Buchungen als veröffentlicht markieren
+    if (booking.status === "ACCEPTED" || booking.status === "CONTENT_PROVIDED") {
+      return (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Buchung bearbeiten</h2>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md mb-4">
+              {error}
+            </div>
+          )}
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Die Buchung wurde akzeptiert{booking.status === "CONTENT_PROVIDED" ? " und der Content wurde bereitgestellt" : ""}.
+              Du kannst sie jetzt als veröffentlicht markieren.
+            </p>
+            <button
+              onClick={() => {
+                if (confirm("Möchtest du diese Buchung wirklich als veröffentlicht markieren?")) {
+                  handleStatusChange("PUBLISHED")
+                }
+              }}
+              disabled={isLoading}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? "Wird verarbeitet..." : "Als veröffentlicht markieren"}
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     return null
   }
 

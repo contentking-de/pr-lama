@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import UpdateSistrixButton from "@/components/UpdateSistrixButton"
 
 export default async function SourceDetailPage({
   params,
@@ -115,6 +116,29 @@ export default async function SourceDetailPage({
             <div>
               <label className="block text-sm font-medium text-gray-700">Domain Rating (DR)</label>
               <p className="mt-1 text-sm text-gray-900">{source.dr || "N/A"}</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Sistrix Sichtbarkeitsindex</label>
+              <div className="mt-1 flex items-center gap-3">
+                    {source.sistrixVisibilityIndex !== null && source.sistrixVisibilityIndex !== undefined ? (
+                      <>
+                        <span className="text-sm font-medium text-gray-900">
+                          {(source.sistrixVisibilityIndex / 10000).toFixed(4)}
+                        </span>
+                    {source.sistrixLastUpdated && (
+                      <span className="text-xs text-gray-500">
+                        (aktualisiert: {new Date(source.sistrixLastUpdated).toLocaleDateString("de-DE")})
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-sm text-gray-400">Nicht verfügbar</span>
+                )}
+                {(user.role === "ADMIN" || user.role === "MEMBER") && (
+                  <UpdateSistrixButton sourceId={source.id} />
+                )}
+              </div>
             </div>
 
             <div>

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { writeFile, mkdir } from "fs/promises"
-import { join } from "path"
-import { existsSync } from "fs"
+import { put } from "@vercel/blob"
 
 export async function POST(req: NextRequest) {
   try {
@@ -30,29 +28,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 })
     }
 
-    if (booking.status !== "CONTENT_PENDING") {
+    if (booking.status !== "CONTENT_PENDING" && booking.status !== "CONTENT_PROVIDED") {
       return NextResponse.json(
-        { error: "Content can only be uploaded for bookings in CONTENT_PENDING status" },
+        { error: "Content can only be uploaded for bookings in CONTENT_PENDING or CONTENT_PROVIDED status" },
         { status: 400 }
       )
     }
 
-    // Datei speichern
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
-    // Upload-Verzeichnis erstellen
-    const uploadDir = join(process.cwd(), "public", "uploads", bookingId)
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true })
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return NextResponse.json(
+        { error: "BLOB_READ_WRITE_TOKEN nicht konfiguriert" },
+        { status: 500 }
+      )
     }
 
     // Dateiname generieren (mit Timestamp um Duplikate zu vermeiden)
     const timestamp = Date.now()
-    const fileName = `${timestamp}-${file.name}`
-    const filePath = join(uploadDir, fileName)
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_")
+    const blobFileName = `content/${bookingId}/${timestamp}-${sanitizedFileName}`
 
-    await writeFile(filePath, buffer)
+    // Datei in Vercel Blob speichern
+    const blob = await put(blobFileName, file, {
+      access: "public",
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    })
 
     // Dateityp bestimmen
     const fileType = file.type.startsWith("image/")
@@ -66,11 +65,22 @@ export async function POST(req: NextRequest) {
       data: {
         bookingId,
         fileName: file.name,
-        fileUrl: `/uploads/${bookingId}/${fileName}`,
+        fileUrl: blob.url,
         fileType,
         uploadedBy: userId,
       },
     })
+
+    // Status auf CONTENT_PROVIDED setzen, wenn noch nicht gesetzt
+    if (booking.status === "CONTENT_PENDING") {
+      await prisma.linkBooking.update({
+        where: { id: bookingId },
+        data: {
+          status: "CONTENT_PROVIDED",
+          contentCompletedBy: userId,
+        },
+      })
+    }
 
     return NextResponse.json(contentAsset, { status: 201 })
   } catch (error: any) {

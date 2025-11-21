@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth-helpers"
 import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import Link from "next/link"
+import PublisherFilter from "@/components/PublisherFilter"
 
 export const dynamic = "force-dynamic"
 
@@ -19,6 +20,12 @@ export default async function BookingsPage({
   const statusParam = resolvedSearchParams.status
   const statusFilter = Array.isArray(statusParam) ? statusParam[0] : (statusParam as string | undefined)
 
+  // Extrahiere publisher aus searchParams
+  const publisherParam = resolvedSearchParams.publisher
+  const publisherFilter = Array.isArray(publisherParam)
+    ? publisherParam[0]
+    : (publisherParam as string | undefined)
+
   // Validiere Status-Filter (nur gültige Enum-Werte erlauben)
   const validStatuses = ["REQUESTED", "ACCEPTED", "CONTENT_PENDING", "CONTENT_PROVIDED", "PUBLISHED"]
   const isValidStatus = statusFilter && validStatuses.includes(statusFilter)
@@ -30,6 +37,13 @@ export default async function BookingsPage({
   if (user.role === "PUBLISHER") {
     where.linkSource = {
       publisherId: user.id,
+    }
+  } else {
+    // Für ADMIN/MEMBER: Publisher-Filter hinzufügen, wenn vorhanden
+    if (publisherFilter) {
+      where.linkSource = {
+        publisherId: publisherFilter,
+      }
     }
   }
 
@@ -44,6 +58,13 @@ export default async function BookingsPage({
   if (user.role === "PUBLISHER") {
     countWhere.linkSource = {
       publisherId: user.id,
+    }
+  } else {
+    // Für ADMIN/MEMBER: Publisher-Filter hinzufügen, wenn vorhanden
+    if (publisherFilter) {
+      countWhere.linkSource = {
+        publisherId: publisherFilter,
+      }
     }
   }
 
@@ -65,6 +86,24 @@ export default async function BookingsPage({
     where: countWhere,
   })
 
+  // Hole alle Publisher für Filter-Dropdown (nur für ADMIN/MEMBER)
+  const publishers =
+    user.role === "ADMIN" || user.role === "MEMBER"
+      ? await prisma.user.findMany({
+          where: {
+            role: "PUBLISHER",
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+          orderBy: {
+            name: "asc",
+          },
+        })
+      : []
+
   const bookings = await prisma.linkBooking.findMany({
     where,
     include: {
@@ -72,6 +111,7 @@ export default async function BookingsPage({
         select: {
           name: true,
           url: true,
+          publisherId: true,
           publisher: {
             select: {
               name: true,
@@ -128,47 +168,63 @@ export default async function BookingsPage({
           )}
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Link
-            href="/bookings"
-            className={`px-3 py-1 rounded-md text-sm flex items-center gap-2 ${
-              !statusFilter
-                ? "bg-blue-600 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-            }`}
-          >
-            Alle
-            <span className={`px-1.5 py-0.5 rounded text-xs ${
-              !statusFilter
-                ? "bg-blue-700 text-white"
-                : "bg-gray-300 text-gray-700"
-            }`}>
-              {totalCount}
-            </span>
-          </Link>
-          {Object.keys(statusColors).map((status) => {
-            const count = statusCounts.find((sc) => sc.status === status)?.count || 0
-            return (
-              <Link
-                key={status}
-                href={`/bookings?status=${status}`}
-                className={`px-3 py-1 rounded-md text-sm flex items-center gap-2 ${
-                  statusFilter === status
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+        {/* Filter */}
+        <div className="space-y-4">
+          {/* Publisher-Filter (nur für ADMIN/MEMBER) */}
+          {(user.role === "ADMIN" || user.role === "MEMBER") && publishers.length > 0 && (
+            <PublisherFilter
+              publishers={publishers}
+              currentPublisher={publisherFilter}
+              currentStatus={statusFilter}
+            />
+          )}
+
+          {/* Status-Filter */}
+          <div className="flex gap-2 flex-wrap">
+            <Link
+              href={publisherFilter ? `/bookings?publisher=${publisherFilter}` : "/bookings"}
+              className={`px-3 py-1 rounded-md text-sm flex items-center gap-2 ${
+                !statusFilter
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              Alle
+              <span
+                className={`px-1.5 py-0.5 rounded text-xs ${
+                  !statusFilter ? "bg-blue-700 text-white" : "bg-gray-300 text-gray-700"
                 }`}
               >
-                {status}
-                <span className={`px-1.5 py-0.5 rounded text-xs ${
-                  statusFilter === status
-                    ? "bg-blue-700 text-white"
-                    : "bg-gray-300 text-gray-700"
-                }`}>
-                  {count}
-                </span>
-              </Link>
-            )
-          })}
+                {totalCount}
+              </span>
+            </Link>
+            {Object.keys(statusColors).map((status) => {
+              const count = statusCounts.find((sc) => sc.status === status)?.count || 0
+              const href = publisherFilter
+                ? `/bookings?status=${status}&publisher=${publisherFilter}`
+                : `/bookings?status=${status}`
+              return (
+                <Link
+                  key={status}
+                  href={href}
+                  className={`px-3 py-1 rounded-md text-sm flex items-center gap-2 ${
+                    statusFilter === status
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  }`}
+                >
+                  {status}
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-xs ${
+                      statusFilter === status ? "bg-blue-700 text-white" : "bg-gray-300 text-gray-700"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow overflow-hidden">

@@ -82,6 +82,8 @@ model LinkSource {
   type        String
   da          Int?     // Domain Authority
   dr          Int?     // Domain Rating
+  sistrixVisibilityIndex Int? // Sistrix Sichtbarkeitsindex
+  sistrixLastUpdated DateTime? // Letzte Aktualisierung des Sichtbarkeitsindex
   availability String
   description String?  @db.Text
   publisher   User     @relation("LinkSourcePublisher", fields: [publisherId], references: [id])
