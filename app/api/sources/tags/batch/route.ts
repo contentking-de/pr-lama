@@ -14,26 +14,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "OpenAI API Key nicht konfiguriert" }, { status: 500 })
     }
 
-    // Zuerst prüfen, wie viele Sources ohne Tags existieren
-    const totalWithoutTags = await prisma.linkSource.count({
-      where: {
-        OR: [
-          { tags: { isEmpty: true } },
-          { tags: { equals: [] } },
-        ],
-      },
-    })
-
-    console.log(`[Batch Tags] Gefunden: ${totalWithoutTags} Sources ohne Tags`)
-
-    // Hole alle Linkquellen ohne Tags oder mit leeren Tags
-    const sources = await prisma.linkSource.findMany({
-      where: {
-        OR: [
-          { tags: { isEmpty: true } },
-          { tags: { equals: [] } },
-        ],
-      },
+    // Hole alle Sources (ohne Limit) und filtere die ohne Tags
+    // Dies ist notwendig, da Prisma's isEmpty möglicherweise NULL-Werte nicht korrekt erfasst
+    const allSources = await prisma.linkSource.findMany({
       select: {
         id: true,
         name: true,
@@ -41,9 +24,40 @@ export async function POST(req: NextRequest) {
         description: true,
         category: true,
         type: true,
+        tags: true,
       },
-      take: 100, // Limit für Batch-Verarbeitung
     })
+
+    console.log(`[Batch Tags] Gesamt Sources in DB: ${allSources.length}`)
+    
+    // Debug: Zeige Tags-Status für alle Sources
+    const tagsStatus = allSources.map((s) => ({
+      id: s.id,
+      name: s.name,
+      tags: s.tags,
+      tagsLength: s.tags?.length || 0,
+      isNull: s.tags === null,
+      isEmpty: s.tags?.length === 0,
+    }))
+    console.log(`[Batch Tags] Tags-Status (erste 5):`, JSON.stringify(tagsStatus.slice(0, 5), null, 2))
+
+    // Filtere Sources ohne Tags (NULL oder leeres Array)
+    const sourcesWithoutTags = allSources.filter((source) => {
+      const hasNoTags = !source.tags || source.tags.length === 0
+      return hasNoTags
+    })
+
+    console.log(`[Batch Tags] Gefunden: ${sourcesWithoutTags.length} Sources ohne Tags (von ${allSources.length} total)`)
+
+    // Limit auf 100 für Batch-Verarbeitung
+    const sources = sourcesWithoutTags.slice(0, 100).map((source) => ({
+      id: source.id,
+      name: source.name,
+      url: source.url,
+      description: source.description,
+      category: source.category,
+      type: source.type,
+    }))
 
     console.log(`[Batch Tags] Starte Verarbeitung von ${sources.length} Sources`)
 
@@ -51,7 +65,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ 
         message: "Keine Sources ohne Tags gefunden", 
         processed: 0,
-        total: totalWithoutTags,
+        total: sourcesWithoutTags.length,
+        totalSources: allSources.length,
       })
     }
 
@@ -159,7 +174,8 @@ Bitte gib mir genau 20 Schlagworte zurück, kommagetrennt, ohne weitere Erkläru
       processed,
       errors,
       total: sources.length,
-      totalWithoutTags,
+      totalWithoutTags: sourcesWithoutTags.length,
+      totalSources: allSources.length,
       duration: `${duration}s`,
     })
   } catch (error: any) {
