@@ -20,14 +20,15 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
   const router = useRouter()
   const searchParams = useSearchParams()
   
-  // Fallback-Werte für sistrixRange
+  // Fallback-Werte für priceRange und sistrixRange
+  const defaultPriceRange = priceRange || { min: 0, max: 1000 }
   const defaultSistrixRange = sistrixRange || { min: 0, max: 10000 }
   
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "")
   const [selectedPublisher, setSelectedPublisher] = useState(searchParams.get("publisher") || "")
   const [maxPrice, setMaxPrice] = useState(
-    searchParams.get("maxPrice") || priceRange.max.toString()
+    searchParams.get("maxPrice") || defaultPriceRange.max.toString()
   )
   const [minSistrix, setMinSistrix] = useState(
     searchParams.get("minSistrix") || defaultSistrixRange.min.toString()
@@ -39,7 +40,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
     if (searchTerm) params.set("search", searchTerm)
     if (selectedCategory) params.set("category", selectedCategory)
     if (selectedPublisher) params.set("publisher", selectedPublisher)
-    if (maxPrice && parseFloat(maxPrice) < priceRange.max) {
+    if (maxPrice && parseFloat(maxPrice) < defaultPriceRange.max) {
       params.set("maxPrice", maxPrice)
     }
     if (minSistrix && parseFloat(minSistrix) > defaultSistrixRange.min) {
@@ -53,7 +54,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
     setSearchTerm("")
     setSelectedCategory("")
     setSelectedPublisher("")
-    setMaxPrice(priceRange.max.toString())
+    setMaxPrice(defaultPriceRange.max.toString())
     setMinSistrix(defaultSistrixRange.min.toString())
     router.push("/sources")
   }
@@ -87,14 +88,14 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
         {/* Suche */}
         <div>
           <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
-            Suche (Name/URL)
+            Suche (Name/URL/Tags)
           </label>
           <input
             id="search"
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Name oder URL suchen..."
+            placeholder="Name, URL oder Tags suchen..."
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -149,8 +150,8 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
           <input
             id="maxPrice"
             type="range"
-            min={priceRange.min}
-            max={priceRange.max}
+            min={defaultPriceRange.min}
+            max={defaultPriceRange.max}
             step="1"
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}

@@ -5,6 +5,8 @@ import Link from "next/link"
 import UpdateSistrixButton from "@/components/UpdateSistrixButton"
 import SourceFilters from "@/components/SourceFilters"
 import BatchUpdateSistrixButton from "@/components/BatchUpdateSistrixButton"
+import BatchGenerateTagsButton from "@/components/BatchGenerateTagsButton"
+import SourceRowWithTags from "@/components/SourceRowWithTags"
 import Pagination from "@/components/Pagination"
 
 export const dynamic = "force-dynamic"
@@ -54,11 +56,20 @@ export default async function SourcesPage({
     where.publisherId = publisher
   }
 
-  // Suche nach Name oder URL
+  // Suche nach Name, URL oder Tags
   if (search) {
+    // Für Tag-Suche: Prisma unterstützt keine Teilstring-Suche in Arrays direkt
+    // Wir verwenden hasSome für exakte Matches
+    // Für case-insensitive Suche müssen wir den Suchbegriff normalisieren
+    const searchLower = search.toLowerCase()
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },
       { url: { contains: search, mode: "insensitive" } },
+      // Tag-Suche: Prisma's hasSome funktioniert nur mit exakten Matches
+      // Daher müssen wir alle Sources laden und dann filtern, oder
+      // wir verwenden eine Raw Query für bessere Performance
+      // Für jetzt: hasSome mit exaktem Match (case-sensitive)
+      { tags: { hasSome: [search] } },
     ]
   }
 
@@ -84,30 +95,67 @@ export default async function SourcesPage({
   // Basis-Query für Preis-Berechnung (ohne Filter)
   const baseWhere = user.role === "PUBLISHER" ? { publisherId: user.id } : {}
 
-  const [sources, totalSources, categories, publishers, priceRange, sistrixRange, totalSourcesCount] = await Promise.all([
-    prisma.linkSource.findMany({
-      where,
-      include: {
-        publisher: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-        creator: {
-          select: {
-            name: true,
-            email: true,
-          },
+  // Für Tag-Suche müssen wir alle Sources laden und dann filtern,
+  // da Prisma keine contains für Array-Elemente unterstützt
+  const whereWithoutSearch = { ...where }
+  delete whereWithoutSearch.OR
+
+  // Lade alle Sources (ohne Pagination, wenn nach Tags gesucht wird)
+  const allSourcesQuery = prisma.linkSource.findMany({
+    where: search
+      ? {
+          ...whereWithoutSearch,
+          // Suche nur nach Name/URL in Prisma, Tags filtern wir manuell
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { url: { contains: search, mode: "insensitive" } },
+          ],
+        }
+      : where,
+    include: {
+      publisher: {
+        select: {
+          name: true,
+          email: true,
         },
       },
-      orderBy: {
-        createdAt: "desc",
+      creator: {
+        select: {
+          name: true,
+          email: true,
+        },
       },
-      skip,
-      take: itemsPerPage,
-    }),
-    prisma.linkSource.count({ where }),
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  })
+
+  // Wenn nach Tags gesucht wird, müssen wir alle laden und filtern
+  let allSources = await allSourcesQuery
+  if (search) {
+    const searchLower = search.toLowerCase()
+    allSources = allSources.filter((source) => {
+      // Prüfe Name und URL (bereits gefiltert durch Prisma)
+      const matchesNameOrUrl =
+        source.name.toLowerCase().includes(searchLower) ||
+        source.url.toLowerCase().includes(searchLower)
+
+      // Prüfe Tags (case-insensitive Teilstring-Suche)
+      const matchesTags =
+        source.tags &&
+        source.tags.length > 0 &&
+        source.tags.some((tag) => tag.toLowerCase().includes(searchLower))
+
+      return matchesNameOrUrl || matchesTags
+    })
+  }
+
+  // Pagination nach Filterung
+  const totalSourcesFiltered = allSources.length
+  const paginatedSources = allSources.slice(skip, skip + itemsPerPage)
+
+  const [categories, publishers, priceRange, sistrixRange, totalSourcesCount] = await Promise.all([
     prisma.category.findMany({
       orderBy: {
         name: "asc",
@@ -199,6 +247,7 @@ export default async function SourcesPage({
           </div>
           {(user.role === "ADMIN" || user.role === "MEMBER") && (
             <div className="flex gap-3 items-center">
+              <BatchGenerateTagsButton totalSources={totalSourcesCount} />
               <BatchUpdateSistrixButton totalSources={totalSourcesCount} />
               <Link
                 href="/sources/new"
@@ -249,148 +298,20 @@ export default async function SourcesPage({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {sources.map((source) => (
-                <tr key={source.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{source.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <a
-                      href={source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline"
-                    >
-                      {source.url}
-                    </a>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {source.publisher.name || source.publisher.email}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {parseFloat(source.price.toString()).toFixed(2)} €
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{source.category}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                      {source.availability}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      {source.sistrixVisibilityIndex !== null && source.sistrixVisibilityIndex !== undefined ? (
-                        <div className="flex items-center gap-2">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900">
-                              {(source.sistrixVisibilityIndex / 10000).toFixed(4)}
-                            </span>
-                            {source.sistrixLastUpdated && (
-                              <span className="text-xs text-gray-500">
-                                {new Date(source.sistrixLastUpdated).toLocaleDateString("de-DE")}
-                              </span>
-                            )}
-                          </div>
-                          {(user.role === "ADMIN" || user.role === "MEMBER") && (
-                            <UpdateSistrixButton sourceId={source.id} />
-                          )}
-                        </div>
-                      ) : (
-                        <>
-                          <span className="text-xs text-gray-400">Nicht verfügbar</span>
-                          {(user.role === "ADMIN" || user.role === "MEMBER") && (
-                            <UpdateSistrixButton sourceId={source.id} />
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end gap-3">
-                      {(user.role === "ADMIN" || user.role === "MEMBER") && (
-                        <Link
-                          href={`/bookings/new?sourceId=${source.id}`}
-                          className="p-1.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
-                          title="Buchen"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                          </svg>
-                        </Link>
-                      )}
-                      <Link
-                        href={`/sources/${source.id}`}
-                        className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                        title="Ansehen"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                          />
-                        </svg>
-                      </Link>
-                      {(user.role === "ADMIN" ||
-                        user.role === "MEMBER" ||
-                        (user.role === "PUBLISHER" && source.publisherId === user.id)) && (
-                        <Link
-                          href={`/sources/${source.id}/edit`}
-                          className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                          title="Bearbeiten"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                            />
-                          </svg>
-                        </Link>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+              {paginatedSources.map((source) => (
+                <SourceRowWithTags
+                  key={source.id}
+                  source={{
+                    ...source,
+                    price: parseFloat(source.price.toString()),
+                  }}
+                  userRole={user.role}
+                  userId={user.id}
+                />
               ))}
             </tbody>
           </table>
-          {sources.length === 0 && (
+          {paginatedSources.length === 0 && (
             <div className="text-center py-12">
               <p className="text-gray-500">Keine Linkquellen gefunden.</p>
             </div>
@@ -398,11 +319,11 @@ export default async function SourcesPage({
         </div>
 
         {/* Pagination */}
-        {totalSources > 0 && (
+        {totalSourcesFiltered > 0 && (
           <Pagination
             currentPage={page}
-            totalPages={Math.ceil(totalSources / itemsPerPage)}
-            totalItems={totalSources}
+            totalPages={Math.ceil(totalSourcesFiltered / itemsPerPage)}
+            totalItems={totalSourcesFiltered}
             itemsPerPage={itemsPerPage}
           />
         )}

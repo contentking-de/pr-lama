@@ -15,6 +15,7 @@ const sourceSchema = z.object({
   dr: z.number().nullable().optional(),
   availability: z.string().min(1),
   description: z.string().nullable().optional(),
+  tags: z.array(z.string()).optional(),
   createdBy: z.string().uuid(),
 })
 

@@ -87,6 +87,7 @@ model LinkSource {
   sistrixLastUpdated DateTime? // Letzte Aktualisierung des Sichtbarkeitsindex
   availability String
   description String?  @db.Text
+  tags        String[] // Schlagworte für die Linkquelle
   publisher   User     @relation("LinkSourcePublisher", fields: [publisherId], references: [id])
   createdBy   String
   creator     User     @relation("LinkSourceCreator", fields: [createdBy], references: [id])

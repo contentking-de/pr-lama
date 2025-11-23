@@ -21,6 +21,7 @@ interface Source {
   dr: number | null
   availability: string
   description: string | null
+  tags?: string[]
 }
 
 interface SourceFormProps {
@@ -46,7 +47,26 @@ export default function SourceForm({ publishers, userId, source, categories = []
     dr: source?.dr?.toString() || "",
     availability: source?.availability || "Verfügbar",
     description: source?.description || "",
+    tags: source?.tags || [],
   })
+  const [newTag, setNewTag] = useState("")
+
+  const addTags = (tagInput: string) => {
+    // Teile die Eingabe an Kommas auf und verarbeite jeden Tag
+    const tagsToAdd = tagInput
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0)
+      .filter((tag) => !formData.tags.includes(tag)) // Entferne Duplikate
+
+    if (tagsToAdd.length > 0) {
+      setFormData({
+        ...formData,
+        tags: [...formData.tags, ...tagsToAdd],
+      })
+      setNewTag("")
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -67,6 +87,7 @@ export default function SourceForm({ publishers, userId, source, categories = []
           price: parseFloat(formData.price),
           da: formData.da ? parseInt(formData.da) : null,
           dr: formData.dr ? parseInt(formData.dr) : null,
+          tags: formData.tags,
           createdBy: userId,
         }),
       })
@@ -257,6 +278,67 @@ export default function SourceForm({ publishers, userId, source, categories = []
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        <div className="md:col-span-2">
+          <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
+            Tags
+          </label>
+          <div className="space-y-3">
+            {/* Tag-Eingabefeld */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                id="tags"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    addTags(newTag)
+                  }
+                }}
+                placeholder="Tags kommagetrennt eingeben (z.B. Tag1, Tag2, Tag3) und Enter drücken"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => addTags(newTag)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Hinzufügen
+              </button>
+            </div>
+
+            {/* Anzeige der Tags */}
+            {formData.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {formData.tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-full bg-purple-100 text-purple-800"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          tags: formData.tags.filter((_, i) => i !== index),
+                        })
+                      }}
+                      className="ml-1 text-purple-600 hover:text-purple-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {formData.tags.length === 0 && (
+              <p className="text-sm text-gray-500">Keine Tags vorhanden</p>
+            )}
+          </div>
         </div>
       </div>
 
