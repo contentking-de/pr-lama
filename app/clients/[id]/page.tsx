@@ -93,6 +93,32 @@ export default async function ClientDetailPage({
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Briefing-Regeln</h2>
+            {client.briefingRules ? (
+              <div className="bg-gray-50 rounded-md p-4">
+                <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans">
+                  {client.briefingRules}
+                </pre>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Keine Briefing-Regeln definiert.</p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">AI-Content-Check-Regeln</h2>
+            {client.aiContentCheckRules ? (
+              <div className="bg-gray-50 rounded-md p-4">
+                <pre className="whitespace-pre-wrap text-sm text-gray-900 font-sans">
+                  {client.aiContentCheckRules}
+                </pre>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Keine AI-Content-Check-Regeln definiert.</p>
+            )}
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-gray-900">Ansprechpartner</h2>
               <Link

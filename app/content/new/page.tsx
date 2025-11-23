@@ -5,7 +5,7 @@ import ContentUploadForm from "@/components/ContentUploadForm"
 import AIContentGenerator from "@/components/AIContentGenerator"
 
 export default async function NewContentPage() {
-  const user = await requireRole(["ADMIN", "MEMBER"])
+  const user = await requireRole(["ADMIN", "MEMBER", "REDAKTEUR"])
 
   // Hole alle Buchungen, die Content benötigen
   const bookings = await prisma.linkBooking.findMany({

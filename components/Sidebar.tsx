@@ -6,12 +6,12 @@ import { useSession, signOut } from "next-auth/react"
 import Image from "next/image"
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", roles: ["ADMIN", "MEMBER", "PUBLISHER"] },
+  { name: "Dashboard", href: "/dashboard", roles: ["ADMIN", "MEMBER", "PUBLISHER", "REDAKTEUR"] },
   { name: "Linkquellen", href: "/sources", roles: ["ADMIN", "MEMBER", "PUBLISHER"] },
   { name: "Publisher", href: "/publishers", roles: ["ADMIN", "MEMBER"] },
   { name: "Kunden", href: "/clients", roles: ["ADMIN", "MEMBER"] },
   { name: "Buchungen", href: "/bookings", roles: ["ADMIN", "MEMBER", "PUBLISHER"] },
-  { name: "Content", href: "/content", roles: ["ADMIN", "MEMBER"] },
+  { name: "Content", href: "/content", roles: ["ADMIN", "MEMBER", "REDAKTEUR"] },
 ]
 
 export default function Sidebar() {

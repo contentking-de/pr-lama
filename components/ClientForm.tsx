@@ -16,6 +16,8 @@ interface Client {
   brand: string
   domain: string
   categories: string[]
+  briefingRules?: string | null
+  aiContentCheckRules?: string | null
   contactPersons: ContactPerson[]
 }
 
@@ -32,6 +34,8 @@ export default function ClientForm({ client }: ClientFormProps) {
     brand: client?.brand || "",
     domain: client?.domain || "",
     categories: client?.categories.join(", ") || "",
+    briefingRules: client?.briefingRules || "",
+    aiContentCheckRules: client?.aiContentCheckRules || "",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,6 +60,8 @@ export default function ClientForm({ client }: ClientFormProps) {
         body: JSON.stringify({
           ...formData,
           categories,
+          briefingRules: formData.briefingRules || null,
+          aiContentCheckRules: formData.aiContentCheckRules || null,
         }),
       })
 
@@ -128,6 +134,40 @@ export default function ClientForm({ client }: ClientFormProps) {
             />
             <p className="mt-1 text-xs text-gray-500">
               Trenne mehrere Kategorien mit Kommas
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="briefingRules" className="block text-sm font-medium text-gray-700 mb-2">
+              Briefing-Regeln
+            </label>
+            <textarea
+              id="briefingRules"
+              value={formData.briefingRules}
+              onChange={(e) => setFormData({ ...formData, briefingRules: e.target.value })}
+              placeholder="Definiere individuelle Briefing-Regeln für diesen Kunden. Diese werden automatisch beim KI-Generator für Briefings verwendet."
+              rows={6}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Diese Regeln werden automatisch in den Prompt für Briefings eingefügt
+            </p>
+          </div>
+
+          <div className="md:col-span-2">
+            <label htmlFor="aiContentCheckRules" className="block text-sm font-medium text-gray-700 mb-2">
+              AI-Content-Check-Regeln
+            </label>
+            <textarea
+              id="aiContentCheckRules"
+              value={formData.aiContentCheckRules}
+              onChange={(e) => setFormData({ ...formData, aiContentCheckRules: e.target.value })}
+              placeholder="Definiere Regeln für den KI-basierten Content-Check. Diese werden verwendet, um fertigen Content zu prüfen."
+              rows={6}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Diese Regeln werden beim manuellen Content-Check verwendet
             </p>
           </div>
         </div>

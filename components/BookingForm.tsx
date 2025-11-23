@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 interface LinkSource {
   id: string
@@ -27,16 +27,26 @@ interface BookingFormProps {
 
 export default function BookingForm({ sources, clients, userId }: BookingFormProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const sourceIdFromQuery = searchParams.get("sourceId") || ""
+
   const [formData, setFormData] = useState({
-    linkSourceId: "",
+    linkSourceId: sourceIdFromQuery,
     clientId: "",
     targetUrl: "",
     anchorText: "",
     publicationDate: new Date().toISOString().split("T")[0],
   })
+
+  // Aktualisiere linkSourceId wenn Query-Parameter vorhanden ist
+  useEffect(() => {
+    if (sourceIdFromQuery && sources.some((s) => s.id === sourceIdFromQuery)) {
+      setFormData((prev) => ({ ...prev, linkSourceId: sourceIdFromQuery }))
+    }
+  }, [sourceIdFromQuery, sources])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

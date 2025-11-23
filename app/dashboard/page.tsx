@@ -121,6 +121,17 @@ export default async function DashboardPage() {
       myBookings,
       pendingRequests,
     }
+  } else if (user.role === "REDAKTEUR") {
+    const [contentPending, contentProvided] = await Promise.all([
+      prisma.linkBooking.count({ where: { status: "CONTENT_PENDING" } }),
+      prisma.linkBooking.count({ where: { status: "CONTENT_PROVIDED" } }),
+    ])
+    
+    stats = {
+      contentData: [
+        { name: "Content Status", pending: contentPending, provided: contentProvided },
+      ],
+    }
   }
 
   return (
@@ -159,6 +170,21 @@ export default async function DashboardPage() {
                 href="/bookings?status=REQUESTED"
               />
             </>
+          ) : user.role === "REDAKTEUR" ? (
+            <>
+              <StatCard
+                title="Content ausstehend"
+                value={stats.contentData?.[0]?.pending || 0}
+                description="Benötigt Content"
+                href="/content"
+              />
+              <StatCard
+                title="Content bereitgestellt"
+                value={stats.contentData?.[0]?.provided || 0}
+                description="Bereit für Veröffentlichung"
+                href="/content"
+              />
+            </>
           ) : (
             <>
               <StatCard
@@ -183,22 +209,24 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        {/* Charts für ADMIN/MEMBER */}
-        {(user.role === "ADMIN" || user.role === "MEMBER") && (
+        {/* Charts für ADMIN/MEMBER und REDAKTEUR */}
+        {(user.role === "ADMIN" || user.role === "MEMBER" || user.role === "REDAKTEUR") && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Buchungen im zeitlichen Verlauf */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Buchungen im zeitlichen Verlauf
-              </h2>
-              {stats.bookingsData && stats.bookingsData.length > 0 ? (
-                <BookingsChart data={stats.bookingsData} />
-              ) : (
-                <div className="text-center py-12 text-gray-500">
-                  Keine Daten verfügbar
-                </div>
-              )}
-            </div>
+            {/* Buchungen im zeitlichen Verlauf - nur für ADMIN/MEMBER */}
+            {(user.role === "ADMIN" || user.role === "MEMBER") && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Buchungen im zeitlichen Verlauf
+                </h2>
+                {stats.bookingsData && stats.bookingsData.length > 0 ? (
+                  <BookingsChart data={stats.bookingsData} />
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    Keine Daten verfügbar
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Content Status */}
             <div className="bg-white rounded-lg shadow p-6">
@@ -222,6 +250,12 @@ export default async function DashboardPage() {
                 <QuickLink href="/sources/new" title="Neue Linkquelle" />
                 <QuickLink href="/clients/new" title="Neuer Kunde" />
                 <QuickLink href="/bookings/new" title="Neue Buchung" />
+              </>
+            )}
+            {user.role === "REDAKTEUR" && (
+              <>
+                <QuickLink href="/content" title="Content verwalten" />
+                <QuickLink href="/content/new" title="Neues Content-Asset" />
               </>
             )}
             {user.role === "PUBLISHER" && (

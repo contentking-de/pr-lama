@@ -7,13 +7,13 @@ import { z } from "zod"
 const generateContentSchema = z.object({
   bookingId: z.string().uuid(),
   prompt: z.string().min(1),
-  contentType: z.enum(["article", "social-media", "email", "press-release"]).optional(),
+  contentType: z.enum(["article", "briefing", "press-release"]).optional(),
 })
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MEMBER")) {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MEMBER" && session.user.role !== "REDAKTEUR")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
           select: {
             brand: true,
             domain: true,
+            briefingRules: true,
+            aiContentCheckRules: true,
           },
         },
       },
@@ -54,15 +56,14 @@ export async function POST(req: NextRequest) {
     // System-Prompt basierend auf Content-Typ
     const systemPrompts: Record<string, string> = {
       article: "Du bist ein professioneller Content-Autor für digitale PR-Artikel. Erstelle hochwertige, SEO-optimierte Artikel.",
-      "social-media": "Du bist ein Social Media Experte. Erstelle ansprechende Social Media Posts.",
-      email: "Du bist ein E-Mail-Marketing Experte. Erstelle professionelle E-Mails.",
+      briefing: "Du bist ein PR-Experte. Erstelle professionelle Briefings für Publisher mit allen relevanten Informationen zur Buchung.",
       "press-release": "Du bist ein PR-Experte. Erstelle professionelle Pressemitteilungen.",
     }
 
     const systemPrompt = systemPrompts[contentType] || systemPrompts.article
 
     // Erweiterten Prompt mit Kontext erstellen
-    const fullPrompt = `
+    let fullPrompt = `
 ${systemPrompt}
 
 Kontext:
@@ -71,6 +72,18 @@ Kontext:
 - Ziel-URL: ${booking.targetUrl}
 - Ankertext: ${booking.anchorText}
 
+`
+
+    // Briefing-Regeln hinzufügen, wenn Content-Typ "briefing" ist
+    if (contentType === "briefing" && booking.client.briefingRules) {
+      fullPrompt += `
+Briefing-Regeln für diesen Kunden:
+${booking.client.briefingRules}
+
+`
+    }
+
+    fullPrompt += `
 Aufgabe:
 ${prompt}
 

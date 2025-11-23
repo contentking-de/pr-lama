@@ -106,6 +106,7 @@ export default function UserForm({ user }: UserFormProps) {
             <option value="MEMBER">MEMBER</option>
             <option value="ADMIN">ADMIN</option>
             <option value="PUBLISHER">PUBLISHER</option>
+            <option value="REDAKTEUR">REDAKTEUR</option>
           </select>
         </div>
       </div>

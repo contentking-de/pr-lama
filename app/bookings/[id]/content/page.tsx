@@ -11,7 +11,7 @@ export default async function ContentPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const user = await requireRole(["ADMIN", "MEMBER"])
+  const user = await requireRole(["ADMIN", "MEMBER", "REDAKTEUR"])
 
   const { id } = await params
 

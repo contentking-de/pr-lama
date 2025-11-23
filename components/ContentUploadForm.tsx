@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 
 interface Booking {
@@ -26,6 +26,31 @@ export default function ContentUploadForm({ bookings, userId }: ContentUploadFor
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [selectedBookingId, setSelectedBookingId] = useState("")
+  const [isBriefing, setIsBriefing] = useState(false)
+  const [briefingRecipientType, setBriefingRecipientType] = useState<"PUBLISHER" | "REDAKTEUR">("PUBLISHER")
+  const [selectedRedakteurId, setSelectedRedakteurId] = useState("")
+  const [redakteure, setRedakteure] = useState<Array<{ id: string; name: string | null; email: string }>>([])
+  const [isLoadingRedakteure, setIsLoadingRedakteure] = useState(false)
+
+  // Lade Redakteure, wenn Briefing ausgewählt wird
+  useEffect(() => {
+    if (isBriefing) {
+      setIsLoadingRedakteure(true)
+      fetch("/api/users/redakteure")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setRedakteure(data)
+          }
+        })
+        .catch((err) => {
+          console.error("Error loading redakteure:", err)
+        })
+        .finally(() => {
+          setIsLoadingRedakteure(false)
+        })
+    }
+  }, [isBriefing])
 
   const handleFileUpload = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -35,6 +60,12 @@ export default function ContentUploadForm({ bookings, userId }: ContentUploadFor
 
     if (!selectedBookingId) {
       setError("Bitte wähle eine Buchung aus")
+      setIsLoading(false)
+      return
+    }
+
+    if (isBriefing && briefingRecipientType === "REDAKTEUR" && !selectedRedakteurId) {
+      setError("Bitte wähle einen Redakteur aus")
       setIsLoading(false)
       return
     }
@@ -76,6 +107,13 @@ export default function ContentUploadForm({ bookings, userId }: ContentUploadFor
       uploadFormData.append("file", file)
       uploadFormData.append("bookingId", selectedBookingId)
       uploadFormData.append("userId", userId)
+      if (isBriefing) {
+        uploadFormData.append("isBriefing", "true")
+        uploadFormData.append("briefingRecipientType", briefingRecipientType)
+        if (briefingRecipientType === "REDAKTEUR" && selectedRedakteurId) {
+          uploadFormData.append("briefingRecipientId", selectedRedakteurId)
+        }
+      }
 
       const response = await fetch("/api/content/upload", {
         method: "POST",
@@ -159,6 +197,89 @@ export default function ContentUploadForm({ bookings, userId }: ContentUploadFor
             Erlaubte Formate: PDF, JPG, PNG, DOCX, TXT (max. 10MB)
           </p>
         </div>
+
+        <div>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={isBriefing}
+              onChange={(e) => {
+                setIsBriefing(e.target.checked)
+                if (!e.target.checked) {
+                  setBriefingRecipientType("PUBLISHER")
+                  setSelectedRedakteurId("")
+                }
+              }}
+              className="mr-2"
+            />
+            <span className="text-sm font-medium text-gray-700">Dies ist ein Briefing</span>
+          </label>
+        </div>
+
+        {isBriefing && (
+          <div className="space-y-4 bg-blue-50 p-4 rounded-md border border-blue-200">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Briefing-Empfänger
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="briefingRecipient"
+                    value="PUBLISHER"
+                    checked={briefingRecipientType === "PUBLISHER"}
+                    onChange={(e) => {
+                      setBriefingRecipientType("PUBLISHER")
+                      setSelectedRedakteurId("")
+                    }}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">Publisher der Buchung</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="briefingRecipient"
+                    value="REDAKTEUR"
+                    checked={briefingRecipientType === "REDAKTEUR"}
+                    onChange={(e) => setBriefingRecipientType("REDAKTEUR")}
+                    className="mr-2"
+                  />
+                  <span className="text-sm text-gray-700">Redakteur</span>
+                </label>
+              </div>
+            </div>
+
+            {briefingRecipientType === "REDAKTEUR" && (
+              <div>
+                <label htmlFor="redakteur" className="block text-sm font-medium text-gray-700 mb-2">
+                  Redakteur auswählen *
+                </label>
+                {isLoadingRedakteure ? (
+                  <p className="text-sm text-gray-500">Lade Redakteure...</p>
+                ) : redakteure.length === 0 ? (
+                  <p className="text-sm text-yellow-600">Keine Redakteure verfügbar</p>
+                ) : (
+                  <select
+                    id="redakteur"
+                    required={briefingRecipientType === "REDAKTEUR"}
+                    value={selectedRedakteurId}
+                    onChange={(e) => setSelectedRedakteurId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Bitte wählen</option>
+                    {redakteure.map((redakteur) => (
+                      <option key={redakteur.id} value={redakteur.id}>
+                        {redakteur.name || redakteur.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex justify-end space-x-4">
           <button

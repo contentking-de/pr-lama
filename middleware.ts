@@ -45,9 +45,14 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL("/dashboard", req.url))
     }
 
-    // Schutz für /content Routen (nur ADMIN und MEMBER)
-    if (path.startsWith("/content") && userRole !== "ADMIN" && userRole !== "MEMBER") {
+    // Schutz für /content Routen (ADMIN, MEMBER und REDAKTEUR)
+    if (path.startsWith("/content") && userRole !== "ADMIN" && userRole !== "MEMBER" && userRole !== "REDAKTEUR") {
       return NextResponse.redirect(new URL("/dashboard", req.url))
+    }
+
+    // REDAKTEUR kann nur auf Content zugreifen
+    if (userRole === "REDAKTEUR" && !path.startsWith("/content") && !path.startsWith("/dashboard")) {
+      return NextResponse.redirect(new URL("/content", req.url))
     }
 
     // Schutz für /users Routen (nur ADMIN)

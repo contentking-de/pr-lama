@@ -6,7 +6,7 @@ import { z } from "zod"
 const userSchema = z.object({
   email: z.string().email(),
   name: z.string().nullable().optional(),
-  role: z.enum(["ADMIN", "MEMBER", "PUBLISHER"]),
+  role: z.enum(["ADMIN", "MEMBER", "PUBLISHER", "REDAKTEUR"]),
 })
 
 export async function POST(req: NextRequest) {

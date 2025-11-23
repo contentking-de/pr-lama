@@ -352,3 +352,117 @@ export async function sendBookingNotificationEmail(data: BookingNotificationData
   }
 }
 
+interface BriefingEmailData {
+  recipientEmail: string
+  recipientName: string | null
+  recipientType: "PUBLISHER" | "REDAKTEUR"
+  bookingId: string
+  linkSourceName: string
+  linkSourceUrl: string
+  clientBrand: string
+  clientDomain: string
+  targetUrl: string
+  anchorText: string
+  publicationDate: Date
+  briefingContent: string
+  contentAssetId: string
+}
+
+export async function sendBriefingEmail(data: BriefingEmailData) {
+  if (!process.env.RESEND_API_KEY) {
+    console.error("RESEND_API_KEY is not set")
+    throw new Error("E-Mail-Konfiguration fehlt")
+  }
+
+  const publicationDateFormatted = new Date(data.publicationDate).toLocaleDateString("de-DE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+
+  const recipientTypeLabel = data.recipientType === "PUBLISHER" ? "Publisher" : "Redakteur"
+
+  try {
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || "noreply@prlama.com",
+      to: data.recipientEmail,
+      subject: `Briefing: ${data.linkSourceName} (${data.clientBrand})`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Briefing</title>
+          </head>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #f0f9ff; padding: 30px; border-radius: 8px;">
+              <h1 style="color: #2563eb; margin-bottom: 20px;">Briefing erhalten</h1>
+
+              <p style="font-size: 16px; margin-bottom: 20px;">
+                Hallo ${data.recipientName || data.recipientEmail},
+              </p>
+
+              <p style="font-size: 16px; margin-bottom: 30px;">
+                Es wurde ein neues Briefing für dich erstellt.
+              </p>
+
+              <div style="background-color: white; padding: 20px; border-radius: 6px; margin-bottom: 30px; border-left: 4px solid #2563eb;">
+                <h2 style="color: #2563eb; margin-top: 0; margin-bottom: 20px;">Buchungsdetails</h2>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold; width: 150px;">Linkquelle:</td>
+                    <td style="padding: 8px 0;">
+                      <a href="${data.linkSourceUrl}" style="color: #2563eb; text-decoration: none;">${data.linkSourceName}</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Kunde:</td>
+                    <td style="padding: 8px 0;">${data.clientBrand} (${data.clientDomain})</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Ziel-URL:</td>
+                    <td style="padding: 8px 0;">
+                      <a href="${data.targetUrl}" style="color: #2563eb; text-decoration: none; word-break: break-all;">${data.targetUrl}</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Anchor-Text:</td>
+                    <td style="padding: 8px 0;">${data.anchorText}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Veröffentlichungsdatum:</td>
+                    <td style="padding: 8px 0;">${publicationDateFormatted}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="background-color: white; padding: 20px; border-radius: 6px; margin-bottom: 30px; border-left: 4px solid #10b981;">
+                <h2 style="color: #10b981; margin-top: 0; margin-bottom: 20px;">Briefing</h2>
+                <div style="background-color: #f9fafb; padding: 15px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; font-size: 14px; line-height: 1.6;">
+${data.briefingContent}
+                </div>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${process.env.NEXTAUTH_URL || "http://localhost:3000"}/content/${data.contentAssetId}/edit" 
+                   style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                  Briefing ansehen
+                </a>
+              </div>
+              
+              <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                Du erhältst diese E-Mail als ${recipientTypeLabel} für diese Buchung.
+              </p>
+            </div>
+          </body>
+        </html>
+      `,
+    })
+  } catch (error) {
+    console.error("Error sending briefing email:", error)
+    throw new Error("E-Mail konnte nicht gesendet werden")
+  }
+}
+

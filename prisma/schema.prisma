@@ -70,6 +70,7 @@ enum UserRole {
   ADMIN
   MEMBER
   PUBLISHER
+  REDAKTEUR
 }
 
 model LinkSource {
@@ -95,14 +96,16 @@ model LinkSource {
 }
 
 model Client {
-  id          String   @id @default(uuid())
-  brand       String
-  domain      String
-  categories  String[]
-  contactPersons ContactPerson[]
-  linkBookings LinkBooking[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(uuid())
+  brand             String
+  domain            String
+  categories        String[]
+  briefingRules     String?  @db.Text
+  aiContentCheckRules String? @db.Text
+  contactPersons    ContactPerson[]
+  linkBookings      LinkBooking[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model ContactPerson {

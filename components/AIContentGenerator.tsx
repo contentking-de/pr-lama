@@ -1,7 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+
+interface Redakteur {
+  id: string
+  name: string | null
+  email: string
+}
 
 interface AIContentGeneratorProps {
   bookingId: string
@@ -15,9 +21,33 @@ export default function AIContentGenerator({ bookingId, onContentGenerated }: AI
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [prompt, setPrompt] = useState("")
-  const [contentType, setContentType] = useState<"article" | "social-media" | "email" | "press-release">("article")
+  const [contentType, setContentType] = useState<"article" | "briefing" | "press-release">("article")
   const [generatedContent, setGeneratedContent] = useState("")
   const [fileName, setFileName] = useState("")
+  const [briefingRecipientType, setBriefingRecipientType] = useState<"PUBLISHER" | "REDAKTEUR">("PUBLISHER")
+  const [selectedRedakteurId, setSelectedRedakteurId] = useState("")
+  const [redakteure, setRedakteure] = useState<Redakteur[]>([])
+  const [isLoadingRedakteure, setIsLoadingRedakteure] = useState(false)
+
+  // Lade Redakteure, wenn Briefing ausgewählt wird
+  useEffect(() => {
+    if (contentType === "briefing") {
+      setIsLoadingRedakteure(true)
+      fetch("/api/users/redakteure")
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data)) {
+            setRedakteure(data)
+          }
+        })
+        .catch((err) => {
+          console.error("Error loading redakteure:", err)
+        })
+        .finally(() => {
+          setIsLoadingRedakteure(false)
+        })
+    }
+  }, [contentType])
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -53,8 +83,7 @@ export default function AIContentGenerator({ bookingId, onContentGenerated }: AI
       // Standard-Dateiname basierend auf Content-Typ setzen
       const defaultFileNames: Record<string, string> = {
         article: "Artikel",
-        "social-media": "Social-Media-Post",
-        email: "E-Mail",
+        briefing: "Briefing",
         "press-release": "Pressemitteilung",
       }
       setFileName(defaultFileNames[contentType] || "Content")
@@ -86,15 +115,86 @@ export default function AIContentGenerator({ bookingId, onContentGenerated }: AI
         <select
           id="contentType"
           value={contentType}
-          onChange={(e) => setContentType(e.target.value as any)}
+          onChange={(e) => {
+            setContentType(e.target.value as any)
+            // Reset Briefing-Auswahl wenn Content-Typ geändert wird
+            if (e.target.value !== "briefing") {
+              setBriefingRecipientType("PUBLISHER")
+              setSelectedRedakteurId("")
+            }
+          }}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="article">Artikel</option>
-          <option value="social-media">Social Media Post</option>
-          <option value="email">E-Mail</option>
+          <option value="briefing">Briefing</option>
           <option value="press-release">Pressemitteilung</option>
         </select>
       </div>
+
+      {contentType === "briefing" && (
+        <div className="space-y-4 bg-blue-50 p-4 rounded-md border border-blue-200">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Briefing-Empfänger
+            </label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="briefingRecipient"
+                  value="PUBLISHER"
+                  checked={briefingRecipientType === "PUBLISHER"}
+                  onChange={(e) => {
+                    setBriefingRecipientType("PUBLISHER")
+                    setSelectedRedakteurId("")
+                  }}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">Publisher der Buchung</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  name="briefingRecipient"
+                  value="REDAKTEUR"
+                  checked={briefingRecipientType === "REDAKTEUR"}
+                  onChange={(e) => setBriefingRecipientType("REDAKTEUR")}
+                  className="mr-2"
+                />
+                <span className="text-sm text-gray-700">Redakteur</span>
+              </label>
+            </div>
+          </div>
+
+          {briefingRecipientType === "REDAKTEUR" && (
+            <div>
+              <label htmlFor="redakteur" className="block text-sm font-medium text-gray-700 mb-2">
+                Redakteur auswählen *
+              </label>
+              {isLoadingRedakteure ? (
+                <p className="text-sm text-gray-500">Lade Redakteure...</p>
+              ) : redakteure.length === 0 ? (
+                <p className="text-sm text-yellow-600">Keine Redakteure verfügbar</p>
+              ) : (
+                <select
+                  id="redakteur"
+                  required={briefingRecipientType === "REDAKTEUR"}
+                  value={selectedRedakteurId}
+                  onChange={(e) => setSelectedRedakteurId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Bitte wählen</option>
+                  {redakteure.map((redakteur) => (
+                    <option key={redakteur.id} value={redakteur.id}>
+                      {redakteur.name || redakteur.email}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <div>
         <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
@@ -170,6 +270,8 @@ export default function AIContentGenerator({ bookingId, onContentGenerated }: AI
                       content: generatedContent,
                       fileName: "", // Wird automatisch generiert
                       contentType,
+                      briefingRecipientType: contentType === "briefing" ? briefingRecipientType : undefined,
+                      briefingRecipientId: contentType === "briefing" && briefingRecipientType === "REDAKTEUR" ? selectedRedakteurId : undefined,
                     }),
                   })
 
@@ -193,7 +295,7 @@ export default function AIContentGenerator({ bookingId, onContentGenerated }: AI
                   setIsSaving(false)
                 }
               }}
-              disabled={isSaving}
+              disabled={isSaving || (contentType === "briefing" && briefingRecipientType === "REDAKTEUR" && !selectedRedakteurId)}
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSaving ? "Wird gespeichert..." : "Content speichern und zuordnen"}

@@ -7,6 +7,8 @@ const clientSchema = z.object({
   brand: z.string().min(1).optional(),
   domain: z.string().min(1).optional(),
   categories: z.array(z.string().min(1)).optional(),
+  briefingRules: z.string().nullable().optional(),
+  aiContentCheckRules: z.string().nullable().optional(),
 })
 
 export async function GET(

@@ -7,6 +7,8 @@ const clientSchema = z.object({
   brand: z.string().min(1),
   domain: z.string().min(1),
   categories: z.array(z.string().min(1)),
+  briefingRules: z.string().nullable().optional(),
+  aiContentCheckRules: z.string().nullable().optional(),
 })
 
 export async function POST(req: NextRequest) {

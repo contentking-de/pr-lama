@@ -6,7 +6,7 @@ import { z } from "zod"
 const userUpdateSchema = z.object({
   email: z.string().email().optional(),
   name: z.string().nullable().optional(),
-  role: z.enum(["ADMIN", "MEMBER", "PUBLISHER"]).optional(),
+  role: z.enum(["ADMIN", "MEMBER", "PUBLISHER", "REDAKTEUR"]).optional(),
 })
 
 export async function GET(

@@ -3,19 +3,21 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { put } from "@vercel/blob"
 import { z } from "zod"
-import { sendContentProvidedNotificationEmail } from "@/lib/email"
+import { sendContentProvidedNotificationEmail, sendBriefingEmail } from "@/lib/email"
 
 const saveGeneratedContentSchema = z.object({
   bookingId: z.string().uuid(),
   content: z.string().min(1),
   fileName: z.string().optional(), // Optional, wird automatisch generiert
   contentType: z.string().optional(),
+  briefingRecipientType: z.enum(["PUBLISHER", "REDAKTEUR"]).optional(),
+  briefingRecipientId: z.string().uuid().optional(),
 })
 
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MEMBER")) {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MEMBER" && session.user.role !== "REDAKTEUR")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
@@ -27,7 +29,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { bookingId, content, fileName, contentType = "article" } = saveGeneratedContentSchema.parse(body)
+    const { bookingId, content, fileName, contentType = "article", briefingRecipientType, briefingRecipientId } = saveGeneratedContentSchema.parse(body)
 
     // Buchung mit allen benötigten Daten laden
     const booking = await prisma.linkBooking.findUnique({
@@ -121,6 +123,58 @@ export async function POST(req: NextRequest) {
       } catch (emailError: any) {
         // E-Mail-Fehler nicht kritisch - Content wurde bereits gespeichert
         console.error("Fehler beim Senden der Content-Benachrichtigung:", emailError.message)
+      }
+    }
+
+    // Wenn es ein Briefing ist, Briefing-E-Mail senden
+    if (contentType === "briefing" && briefingRecipientType) {
+      try {
+        let recipientEmail = ""
+        let recipientName: string | null = null
+        let recipientType: "PUBLISHER" | "REDAKTEUR" = "PUBLISHER"
+
+        if (briefingRecipientType === "REDAKTEUR" && briefingRecipientId) {
+          // Redakteur laden
+          const redakteur = await prisma.user.findUnique({
+            where: { id: briefingRecipientId },
+            select: {
+              email: true,
+              name: true,
+            },
+          })
+
+          if (redakteur) {
+            recipientEmail = redakteur.email
+            recipientName = redakteur.name
+            recipientType = "REDAKTEUR"
+          } else {
+            throw new Error("Redakteur nicht gefunden")
+          }
+        } else {
+          // Publisher verwenden
+          recipientEmail = booking.linkSource.publisher.email
+          recipientName = booking.linkSource.publisher.name
+          recipientType = "PUBLISHER"
+        }
+
+        await sendBriefingEmail({
+          recipientEmail,
+          recipientName,
+          recipientType,
+          bookingId: booking.id,
+          linkSourceName: booking.linkSource.name,
+          linkSourceUrl: booking.linkSource.url,
+          clientBrand: booking.client.brand,
+          clientDomain: booking.client.domain,
+          targetUrl: booking.targetUrl,
+          anchorText: booking.anchorText,
+          publicationDate: booking.publicationDate,
+          briefingContent: content,
+          contentAssetId: contentAsset.id,
+        })
+      } catch (emailError: any) {
+        // E-Mail-Fehler nicht kritisch - Content wurde bereits gespeichert
+        console.error("Fehler beim Senden der Briefing-E-Mail:", emailError.message)
       }
     }
 

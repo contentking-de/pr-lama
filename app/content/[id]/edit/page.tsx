@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import ContentEditForm from "@/components/ContentEditForm"
 import AIContentGenerator from "@/components/AIContentGenerator"
+import ContentCheck from "@/components/ContentCheck"
 import { notFound } from "next/navigation"
 
 export default async function EditContentPage({
@@ -10,7 +11,7 @@ export default async function EditContentPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  await requireRole(["ADMIN", "MEMBER"])
+  await requireRole(["ADMIN", "MEMBER", "REDAKTEUR"])
 
   const { id } = await params
 
@@ -67,9 +68,17 @@ export default async function EditContentPage({
             <ContentEditForm asset={{ ...asset, content }} />
           </div>
 
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">KI-Content generieren</h2>
-            <AIContentGenerator bookingId={asset.bookingId} />
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">KI-Content generieren</h2>
+              <AIContentGenerator bookingId={asset.bookingId} />
+            </div>
+
+            {asset.fileType === "text" && (
+              <div>
+                <ContentCheck contentAssetId={asset.id} fileType={asset.fileType} />
+              </div>
+            )}
           </div>
         </div>
       </div>
