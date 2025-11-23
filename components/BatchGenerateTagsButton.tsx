@@ -33,13 +33,27 @@ export default function BatchGenerateTagsButton({ totalSources }: BatchGenerateT
       }
 
       const data = await response.json()
-      setSuccess(`${data.processed} Linkquellen erfolgreich verschlagwortet.${data.errors > 0 ? ` ${data.errors} Fehler aufgetreten.` : ""}`)
+      
+      if (data.message) {
+        if (data.processed === 0) {
+          setError(data.message || "Keine Linkquellen verarbeitet")
+        } else {
+          setSuccess(
+            `${data.processed} von ${data.total || data.totalWithoutTags || "unbekannt"} Linkquellen erfolgreich verschlagwortet.` +
+            (data.errors > 0 ? ` ${data.errors} Fehler aufgetreten.` : "") +
+            (data.duration ? ` Dauer: ${data.duration}` : "")
+          )
+        }
+      } else {
+        setSuccess(`${data.processed} Linkquellen erfolgreich verschlagwortet.${data.errors > 0 ? ` ${data.errors} Fehler aufgetreten.` : ""}`)
+      }
 
       router.refresh()
 
       setTimeout(() => {
         setSuccess("")
-      }, 10000)
+        setError("")
+      }, 15000)
     } catch (err: any) {
       setError(err.message || "Ein Fehler ist aufgetreten")
     } finally {
