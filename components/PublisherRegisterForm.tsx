@@ -12,6 +12,7 @@ export default function PublisherRegisterForm() {
   const [formData, setFormData] = useState({
     email: "",
     name: "",
+    exampleSources: "",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +37,7 @@ export default function PublisherRegisterForm() {
       }
 
       setSuccess(true)
-      setFormData({ email: "", name: "" })
+      setFormData({ email: "", name: "", exampleSources: "" })
     } catch (err: any) {
       setError(err.message || "Ein Fehler ist aufgetreten")
     } finally {
@@ -103,6 +104,23 @@ export default function PublisherRegisterForm() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Dein Name"
             />
+          </div>
+
+          <div>
+            <label htmlFor="exampleSources" className="block text-sm font-medium text-gray-700 mb-2">
+              Beispiel-Linkquellen aus deinem Portfolio (optional)
+            </label>
+            <textarea
+              id="exampleSources"
+              rows={4}
+              value={formData.exampleSources}
+              onChange={(e) => setFormData({ ...formData, exampleSources: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Bitte nenne 2-3 Beispiel-Linkquellen aus deinem Portfolio (z.B. Domain-Namen oder URLs)"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Diese Informationen helfen uns bei der Prüfung deiner Registrierung.
+            </p>
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
