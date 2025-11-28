@@ -245,18 +245,20 @@ export default async function SourcesPage({
                 : "Alle Linkquellen verwalten"}
             </p>
           </div>
-          {(user.role === "ADMIN" || user.role === "MEMBER") && (
-            <div className="flex gap-3 items-center">
-              <BatchGenerateTagsButton totalSources={totalSourcesCount} />
-              <BatchUpdateSistrixButton totalSources={totalSourcesCount} />
-              <Link
-                href="/sources/new"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Neue Linkquelle
-              </Link>
-            </div>
-          )}
+          <div className="flex gap-3 items-center">
+            {(user.role === "ADMIN" || user.role === "MEMBER") && (
+              <>
+                <BatchGenerateTagsButton totalSources={totalSourcesCount} />
+                <BatchUpdateSistrixButton totalSources={totalSourcesCount} />
+              </>
+            )}
+            <Link
+              href="/sources/new"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Neue Linkquelle
+            </Link>
+          </div>
         </div>
 
         {/* Filter */}

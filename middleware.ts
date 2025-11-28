@@ -10,9 +10,9 @@ export async function middleware(req: NextRequest) {
   })
 
   // Öffentliche Routen
-  if (path === "/login" || path === "/login/verify") {
-    // Wenn bereits eingeloggt, zum Dashboard weiterleiten
-    if (token) {
+  if (path === "/login" || path === "/login/verify" || path === "/publishers/register") {
+    // Wenn bereits eingeloggt, zum Dashboard weiterleiten (außer bei Registrierung)
+    if (token && path !== "/publishers/register") {
       return NextResponse.redirect(new URL("/dashboard", req.url))
     }
     return NextResponse.next()
@@ -41,7 +41,8 @@ export async function middleware(req: NextRequest) {
     }
 
     // Schutz für /publishers Routen (nur ADMIN und MEMBER)
-    if (path.startsWith("/publishers") && userRole !== "ADMIN" && userRole !== "MEMBER") {
+    // /publishers/register ist öffentlich und wird oben behandelt
+    if (path.startsWith("/publishers") && !path.startsWith("/publishers/register") && userRole !== "ADMIN" && userRole !== "MEMBER") {
       return NextResponse.redirect(new URL("/dashboard", req.url))
     }
 

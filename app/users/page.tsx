@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import Link from "next/link"
 import DeleteUserButton from "@/components/DeleteUserButton"
+import ApprovePublisherButton from "@/components/ApprovePublisherButton"
 
 export default async function UsersPage() {
   const user = await requireAuth()
@@ -12,6 +13,14 @@ export default async function UsersPage() {
   }
 
   const users = await prisma.user.findMany({
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      isApproved: true,
+      createdAt: true,
+    },
     orderBy: {
       createdAt: "desc",
     },
@@ -53,6 +62,9 @@ export default async function UsersPage() {
                   Rolle
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Erstellt am
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -81,12 +93,30 @@ export default async function UsersPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    {userItem.role === "PUBLISHER" ? (
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          (userItem as any).isApproved
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {(userItem as any).isApproved ? "Freigeschaltet" : "Ausstehend"}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-500">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
                       {new Date(userItem.createdAt).toLocaleDateString("de-DE")}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex items-center justify-end gap-3">
+                      {userItem.role === "PUBLISHER" && !(userItem as any).isApproved && (
+                        <ApprovePublisherButton userId={userItem.id} />
+                      )}
                       <Link
                         href={`/users/${userItem.id}/edit`}
                         className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"

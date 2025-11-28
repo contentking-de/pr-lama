@@ -22,12 +22,17 @@ const sourceSchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MEMBER")) {
+    if (!session || (session.user.role !== "ADMIN" && session.user.role !== "MEMBER" && session.user.role !== "PUBLISHER")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await req.json()
-    const validatedData = sourceSchema.parse(body)
+    let validatedData = sourceSchema.parse(body)
+
+    // Publisher können nur für sich selbst Sources erstellen
+    if (session.user.role === "PUBLISHER") {
+      validatedData.publisherId = session.user.id
+    }
 
     const source = await prisma.linkSource.create({
       data: validatedData,

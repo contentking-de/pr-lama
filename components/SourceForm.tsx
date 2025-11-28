@@ -29,9 +29,10 @@ interface SourceFormProps {
   userId: string
   source?: Source
   categories?: string[]
+  isPublisher?: boolean
 }
 
-export default function SourceForm({ publishers, userId, source, categories = [] }: SourceFormProps) {
+export default function SourceForm({ publishers, userId, source, categories = [], isPublisher = false }: SourceFormProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -39,7 +40,7 @@ export default function SourceForm({ publishers, userId, source, categories = []
   const [formData, setFormData] = useState({
     name: source?.name || "",
     url: source?.url || "",
-    publisherId: source?.publisherId || publishers[0]?.id || "",
+    publisherId: source?.publisherId || (isPublisher ? userId : publishers[0]?.id || ""),
     price: source?.price.toString() || "",
     category: source?.category || "",
     type: source?.type || "",
@@ -143,25 +144,27 @@ export default function SourceForm({ publishers, userId, source, categories = []
           />
         </div>
 
-        <div>
-          <label htmlFor="publisherId" className="block text-sm font-medium text-gray-700 mb-2">
-            Publisher *
-          </label>
-          <select
-            id="publisherId"
-            required
-            value={formData.publisherId}
-            onChange={(e) => setFormData({ ...formData, publisherId: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Bitte wählen</option>
-            {publishers.map((publisher) => (
-              <option key={publisher.id} value={publisher.id}>
-                {publisher.name || publisher.email}
-              </option>
-            ))}
-          </select>
-        </div>
+        {!isPublisher && (
+          <div>
+            <label htmlFor="publisherId" className="block text-sm font-medium text-gray-700 mb-2">
+              Publisher *
+            </label>
+            <select
+              id="publisherId"
+              required
+              value={formData.publisherId}
+              onChange={(e) => setFormData({ ...formData, publisherId: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Bitte wählen</option>
+              {publishers.map((publisher) => (
+                <option key={publisher.id} value={publisher.id}>
+                  {publisher.name || publisher.email}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">

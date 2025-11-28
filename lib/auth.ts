@@ -68,16 +68,26 @@ export const authOptions: NextAuthConfig = {
     async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id
-        // Lade User-Rolle aus der Datenbank
+        // Lade User-Rolle und Freischaltungsstatus aus der Datenbank
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: user.id },
-            select: { role: true },
+            select: { role: true, isApproved: true },
           })
           token.role = dbUser?.role || "MEMBER"
-        } catch (error) {
+          token.isApproved = dbUser?.isApproved ?? true
+          
+          // Blockiere unbestätigte Publisher
+          if (dbUser?.role === "PUBLISHER" && !dbUser.isApproved) {
+            throw new Error("PUBLISHER_NOT_APPROVED")
+          }
+        } catch (error: any) {
+          if (error.message === "PUBLISHER_NOT_APPROVED") {
+            throw error
+          }
           console.error("Error loading user role:", error)
           token.role = "MEMBER"
+          token.isApproved = true
         }
       }
       return token
@@ -91,9 +101,13 @@ export const authOptions: NextAuthConfig = {
           try {
             const dbUser = await prisma.user.findUnique({
               where: { id: token.id as string },
-              select: { role: true, name: true, email: true },
+              select: { role: true, name: true, email: true, isApproved: true },
             })
             if (dbUser) {
+              // Blockiere unbestätigte Publisher
+              if (dbUser.role === "PUBLISHER" && !dbUser.isApproved) {
+                return null as any // Session wird nicht erstellt
+              }
               session.user.role = dbUser.role || "MEMBER"
               session.user.name = dbUser.name
               session.user.email = dbUser.email
@@ -104,6 +118,26 @@ export const authOptions: NextAuthConfig = {
         }
       }
       return session
+    },
+    async signIn({ user }) {
+      // Prüfe ob Publisher freigeschaltet ist
+      if (user?.id) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { role: true, isApproved: true },
+          })
+          
+          // Blockiere unbestätigte Publisher
+          if (dbUser?.role === "PUBLISHER" && !dbUser.isApproved) {
+            return false
+          }
+        } catch (error) {
+          console.error("Error checking user approval:", error)
+          return false
+        }
+      }
+      return true
     },
   },
 }

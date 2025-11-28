@@ -17,6 +17,7 @@ model User {
   role      UserRole @default(MEMBER)
   emailVerified DateTime?
   image     String?
+  isApproved Boolean @default(true) // Für Publisher: muss von Admin freigeschaltet werden
   accounts  Account[]
   sessions  Session[]
   linkSources LinkSource[] @relation("LinkSourcePublisher")
