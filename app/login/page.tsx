@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import Image from "next/image"
+import Link from "next/link"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -90,7 +91,10 @@ export default function LoginPage() {
         </form>
 
         <p className="text-xs text-center text-gray-500 mt-4">
-          Diese Plattform ist nur für autorisierte Nutzer zugänglich.
+          Diese Plattform ist nur für autorisierte Nutzer zugänglich.{" "}
+          <Link href="/publishers/register" className="text-blue-600 hover:text-blue-800 underline">
+            Jetzt als Publisher registrieren.
+          </Link>
         </p>
       </div>
     </div>
