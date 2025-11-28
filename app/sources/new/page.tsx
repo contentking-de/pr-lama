@@ -9,7 +9,7 @@ export default async function NewSourcePage() {
   // Für Publisher: nur eigene ID, für ADMIN/MEMBER: alle Publisher
   const [publishers, categories] = await Promise.all([
     user.role === "PUBLISHER"
-      ? Promise.resolve([{ id: user.id, name: user.name, email: user.email }])
+      ? Promise.resolve([{ id: user.id, name: user.name || null, email: user.email }])
       : prisma.user.findMany({
           where: {
             role: "PUBLISHER",
