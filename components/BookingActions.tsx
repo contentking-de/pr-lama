@@ -177,31 +177,6 @@ export default function BookingActions({ booking, user }: BookingActionsProps) {
 
   // ADMIN und MEMBER können Status ändern
   if (user.role === "ADMIN" || user.role === "MEMBER") {
-      setIsSendingReminder(true)
-      setReminderError("")
-      setReminderSuccess(false)
-
-      try {
-        const response = await fetch(`/api/bookings/${booking.id}/reminder`, {
-          method: "POST",
-        })
-
-        if (!response.ok) {
-          const data = await response.json()
-          throw new Error(data.error || "Fehler beim Senden des Reminders")
-        }
-
-        setReminderSuccess(true)
-        setTimeout(() => {
-          setReminderSuccess(false)
-        }, 3000)
-      } catch (err: any) {
-        setReminderError(err.message || "Ein Fehler ist aufgetreten")
-      } finally {
-        setIsSendingReminder(false)
-      }
-    }
-
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Aktionen</h2>
