@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
+import { getCountryFlag } from "@/lib/countryFlags"
 
 interface Publisher {
   id: string
@@ -14,9 +15,10 @@ interface SourceFiltersProps {
   priceRange: { min: number; max: number }
   sistrixRange?: { min: number; max: number }
   publishers?: Publisher[]
+  countries?: string[]
 }
 
-export default function SourceFilters({ categories, priceRange, sistrixRange, publishers = [] }: SourceFiltersProps) {
+export default function SourceFilters({ categories, priceRange, sistrixRange, publishers = [], countries = [] }: SourceFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -27,6 +29,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "")
   const [selectedPublisher, setSelectedPublisher] = useState(searchParams.get("publisher") || "")
+  const [selectedCountry, setSelectedCountry] = useState(searchParams.get("country") || "")
   const [maxPrice, setMaxPrice] = useState(
     searchParams.get("maxPrice") || defaultPriceRange.max.toString()
   )
@@ -40,6 +43,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
     if (searchTerm) params.set("search", searchTerm)
     if (selectedCategory) params.set("category", selectedCategory)
     if (selectedPublisher) params.set("publisher", selectedPublisher)
+    if (selectedCountry) params.set("country", selectedCountry)
     if (maxPrice && parseFloat(maxPrice) < defaultPriceRange.max) {
       params.set("maxPrice", maxPrice)
     }
@@ -54,6 +58,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
     setSearchTerm("")
     setSelectedCategory("")
     setSelectedPublisher("")
+    setSelectedCountry("")
     setMaxPrice(defaultPriceRange.max.toString())
     setMinSistrix(defaultSistrixRange.min.toString())
     router.push("/sources")
@@ -70,7 +75,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
 
   useEffect(() => {
     handleFilterChange()
-  }, [selectedCategory, selectedPublisher, maxPrice, minSistrix])
+  }, [selectedCategory, selectedPublisher, selectedCountry, maxPrice, minSistrix])
 
   return (
     <div className="bg-white rounded-lg shadow p-6 space-y-4">
@@ -84,7 +89,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
         </button>
       </div>
 
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${sistrixRange ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${sistrixRange ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4`}>
         {/* Suche */}
         <div>
           <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
@@ -119,6 +124,28 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
             ))}
           </select>
         </div>
+
+        {/* Land Filter */}
+        {countries.length > 0 && (
+          <div>
+            <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
+              Land
+            </label>
+            <select
+              id="country"
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Alle Länder</option>
+              {countries.map((country) => (
+                <option key={country} value={country}>
+                  {getCountryFlag(country)} {country}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Publisher Filter */}
         {publishers.length > 0 && (

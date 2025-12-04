@@ -3,6 +3,42 @@
  * Dokumentation: https://www.sistrix.com/api/domain/domain-visibilityindex/
  */
 
+import { getCountryFromUrl } from "./countryFlags"
+
+/**
+ * Konvertiert einen Ländernamen zu einem SISTRIX Country-Code
+ * Siehe: https://www.sistrix.com/api/domain/domain-visibilityindex/
+ */
+function getSistrixCountryCode(country: string | null): string {
+  if (!country) return "de" // Standard: Deutschland
+
+  const countryLower = country.toLowerCase().trim()
+
+  // Mapping von Ländernamen zu SISTRIX Country-Codes
+  const countryToCode: Record<string, string> = {
+    deutschland: "de",
+    germany: "de",
+    niederlande: "nl",
+    netherlands: "nl",
+    holland: "nl",
+    spanien: "es",
+    spain: "es",
+    frankreich: "fr",
+    france: "fr",
+    italien: "it",
+    italy: "it",
+    schweiz: "ch",
+    switzerland: "ch",
+    österreich: "at",
+    oesterreich: "at",
+    austria: "at",
+    polen: "pl",
+    poland: "pl",
+  }
+
+  return countryToCode[countryLower] || "de" // Fallback: Deutschland
+}
+
 interface SistrixVisibilityIndexResponse {
   answer?: Array<{
     sichtbarkeitsindex?: Array<{
@@ -38,8 +74,14 @@ export function normalizeDomainForSistrix(url: string): string {
 /**
  * Holt den Sichtbarkeitsindex für eine Domain von der Sistrix API
  * Verwendet domain.visibilityindex Endpoint
+ * 
+ * @param domain Die Domain oder URL
+ * @param country Optional: Ländername (z.B. "Niederlande", "Spanien"). Wenn nicht angegeben, wird das Land automatisch aus der Domain bestimmt.
  */
-export async function getSistrixVisibilityIndex(domain: string): Promise<number | null> {
+export async function getSistrixVisibilityIndex(
+  domain: string,
+  country?: string | null
+): Promise<number | null> {
   const apiKey = process.env.SISTRIX_API_KEY
 
   if (!apiKey) {
@@ -48,12 +90,24 @@ export async function getSistrixVisibilityIndex(domain: string): Promise<number 
 
   const normalizedDomain = normalizeDomainForSistrix(domain)
 
+  // Bestimme das Land: Wenn nicht übergeben, versuche es aus der URL zu extrahieren
+  let countryCode = "de" // Standard: Deutschland
+  if (country) {
+    countryCode = getSistrixCountryCode(country)
+  } else {
+    // Versuche Land aus der URL zu bestimmen
+    const countryFromUrl = getCountryFromUrl(domain)
+    if (countryFromUrl) {
+      countryCode = getSistrixCountryCode(countryFromUrl)
+    }
+  }
+
   try {
     // Verwende FormData wie im Beispiel der Dokumentation
     const form = new FormData()
     form.append("api_key", apiKey)
     form.append("domain", normalizedDomain)
-    form.append("country", "de") // Deutschland als Standard
+    form.append("country", countryCode)
     form.append("format", "json")
 
     const response = await fetch("https://api.sistrix.com/domain.visibilityindex", {

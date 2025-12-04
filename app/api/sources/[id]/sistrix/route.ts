@@ -23,8 +23,8 @@ export async function POST(
       return NextResponse.json({ error: "Link source not found" }, { status: 404 })
     }
 
-    // Hole Sichtbarkeitsindex von Sistrix API
-    const visibilityIndex = await getSistrixVisibilityIndex(source.url)
+    // Hole Sichtbarkeitsindex von Sistrix API mit dem entsprechenden Land
+    const visibilityIndex = await getSistrixVisibilityIndex(source.url, source.country)
 
     // Aktualisiere Linkquelle mit dem neuen Sichtbarkeitsindex
     const updatedSource = await prisma.linkSource.update({

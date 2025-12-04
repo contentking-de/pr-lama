@@ -35,6 +35,9 @@ export default async function SourcesPage({
   const publisher = Array.isArray(resolvedSearchParams.publisher)
     ? resolvedSearchParams.publisher[0]
     : (resolvedSearchParams.publisher as string | undefined)
+  const country = Array.isArray(resolvedSearchParams.country)
+    ? resolvedSearchParams.country[0]
+    : (resolvedSearchParams.country as string | undefined)
   
   // Pagination
   const page = parseInt(
@@ -90,6 +93,11 @@ export default async function SourcesPage({
     where.sistrixVisibilityIndex = {
       gte: parseInt(minSistrix),
     }
+  }
+
+  // Land-Filter
+  if (country) {
+    where.country = country
   }
 
   // Basis-Query für Preis-Berechnung (ohne Filter)
@@ -155,7 +163,7 @@ export default async function SourcesPage({
   const totalSourcesFiltered = allSources.length
   const paginatedSources = allSources.slice(skip, skip + itemsPerPage)
 
-  const [categories, publishers, priceRange, sistrixRange, totalSourcesCount] = await Promise.all([
+  const [categories, publishers, priceRange, sistrixRange, countries, totalSourcesCount] = await Promise.all([
     prisma.category.findMany({
       orderBy: {
         name: "asc",
@@ -227,6 +235,20 @@ export default async function SourcesPage({
         return { min: 0, max: 10000 }
       }
     })(),
+    // Hole alle verfügbaren Länder für Filter
+    (async () => {
+      const sourcesWithCountries = await prisma.linkSource.findMany({
+        where: baseWhere,
+        select: {
+          country: true,
+        },
+        distinct: ['country'],
+      })
+      return sourcesWithCountries
+        .map((s) => s.country)
+        .filter((c): c is string => c !== null && c !== undefined && c.trim() !== '')
+        .sort()
+    })(),
     // Gesamtzahl aller Sources (für Batch-Update Button)
     prisma.linkSource.count({
       where: baseWhere,
@@ -267,12 +289,16 @@ export default async function SourcesPage({
           priceRange={priceRange}
           sistrixRange={sistrixRange}
           publishers={publishers}
+          countries={countries}
         />
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                  Land
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Name
                 </th>

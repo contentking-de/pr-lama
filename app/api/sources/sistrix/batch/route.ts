@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
         id: true,
         name: true,
         url: true,
+        country: true,
         sistrixVisibilityIndex: true,
       },
       orderBy: {
@@ -43,8 +44,8 @@ export async function POST(req: NextRequest) {
       const source = sources[i]
 
       try {
-        // Hole neuen Sichtbarkeitsindex
-        const visibilityIndex = await getSistrixVisibilityIndex(source.url)
+        // Hole neuen Sichtbarkeitsindex mit dem entsprechenden Land
+        const visibilityIndex = await getSistrixVisibilityIndex(source.url, source.country)
 
         if (visibilityIndex === null) {
           skipped++

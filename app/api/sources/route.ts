@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { getSistrixVisibilityIndex } from "@/lib/sistrix"
+import { getCountryFromUrl } from "@/lib/countryFlags"
 
 const sourceSchema = z.object({
   name: z.string().min(1),
@@ -16,6 +17,7 @@ const sourceSchema = z.object({
   availability: z.string().min(1),
   description: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
+  country: z.string().nullable().optional(),
   createdBy: z.string().uuid(),
 })
 
@@ -34,13 +36,21 @@ export async function POST(req: NextRequest) {
       validatedData.publisherId = session.user.id
     }
 
+    // Automatische Zuordnung des Landes basierend auf der URL, falls nicht gesetzt
+    if (!validatedData.country) {
+      const autoCountry = getCountryFromUrl(validatedData.url)
+      if (autoCountry) {
+        validatedData.country = autoCountry
+      }
+    }
+
     const source = await prisma.linkSource.create({
       data: validatedData,
     })
 
     // Automatisch Sistrix Sichtbarkeitsindex abrufen (im Hintergrund, ohne das Erstellen zu blockieren)
     try {
-      const visibilityIndex = await getSistrixVisibilityIndex(source.url)
+      const visibilityIndex = await getSistrixVisibilityIndex(source.url, source.country)
       
       if (visibilityIndex !== null) {
         await prisma.linkSource.update({

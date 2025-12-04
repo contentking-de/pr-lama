@@ -104,6 +104,11 @@ export default async function SourceDetailPage({
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700">Land</label>
+              <p className="mt-1 text-sm text-gray-900">{source.country || "N/A"}</p>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700">Typ</label>
               <p className="mt-1 text-sm text-gray-900">{source.type}</p>
             </div>

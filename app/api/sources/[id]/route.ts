@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+import { getCountryFromUrl } from "@/lib/countryFlags"
 
 const sourceSchema = z.object({
   name: z.string().min(1).optional(),
@@ -15,6 +16,7 @@ const sourceSchema = z.object({
   availability: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
+  country: z.string().nullable().optional(),
 })
 
 export async function GET(
@@ -91,7 +93,21 @@ export async function PUT(
     }
 
     const body = await req.json()
-    const validatedData = sourceSchema.parse(body)
+    let validatedData = sourceSchema.parse(body)
+
+    // Automatische Zuordnung des Landes basierend auf der URL, falls nicht gesetzt oder URL geändert wurde
+    if (validatedData.url && (!validatedData.country || validatedData.url !== source.url)) {
+      const autoCountry = getCountryFromUrl(validatedData.url)
+      if (autoCountry) {
+        validatedData.country = autoCountry
+      }
+    } else if (!validatedData.country && !source.country && validatedData.url) {
+      // Falls URL aktualisiert wurde aber kein Land gesetzt ist
+      const autoCountry = getCountryFromUrl(validatedData.url)
+      if (autoCountry) {
+        validatedData.country = autoCountry
+      }
+    }
 
     const updatedSource = await prisma.linkSource.update({
       where: { id },

@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { getCountryFromUrl } from "@/lib/countryFlags"
 
 interface Publisher {
   id: string
@@ -22,6 +23,7 @@ interface Source {
   availability: string
   description: string | null
   tags?: string[]
+  country?: string | null
 }
 
 interface SourceFormProps {
@@ -49,6 +51,7 @@ export default function SourceForm({ publishers, userId, source, categories = []
     availability: source?.availability || "Verfügbar",
     description: source?.description || "",
     tags: source?.tags || [],
+    country: source?.country || "",
   })
   const [newTag, setNewTag] = useState("")
 
@@ -89,6 +92,7 @@ export default function SourceForm({ publishers, userId, source, categories = []
           da: formData.da ? parseInt(formData.da) : null,
           dr: formData.dr ? parseInt(formData.dr) : null,
           tags: formData.tags,
+          country: formData.country || null,
           createdBy: userId,
         }),
       })
@@ -139,7 +143,21 @@ export default function SourceForm({ publishers, userId, source, categories = []
             id="url"
             required
             value={formData.url}
-            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+            onChange={(e) => {
+              const newUrl = e.target.value
+              
+              // Automatische Zuordnung des Landes basierend auf der URL, falls Land noch nicht gesetzt
+              if (newUrl && !formData.country) {
+                const autoCountry = getCountryFromUrl(newUrl)
+                if (autoCountry) {
+                  setFormData({ ...formData, url: newUrl, country: autoCountry })
+                } else {
+                  setFormData({ ...formData, url: newUrl })
+                }
+              } else {
+                setFormData({ ...formData, url: newUrl })
+              }
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -223,6 +241,20 @@ export default function SourceForm({ publishers, userId, source, categories = []
             required
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
+            Land
+          </label>
+          <input
+            type="text"
+            id="country"
+            value={formData.country}
+            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+            placeholder="z.B. Deutschland, Spanien, Frankreich"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>

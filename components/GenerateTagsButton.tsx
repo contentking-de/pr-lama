@@ -53,16 +53,16 @@ export default function GenerateTagsButton({ sourceId, onUpdate }: GenerateTagsB
       <button
         onClick={handleGenerate}
         disabled={isLoading}
-        className="p-1.5 rounded-full text-gray-600 hover:text-purple-600 hover:bg-purple-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+        className="p-1.5 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         title="Tags generieren"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
-          strokeWidth={1.5}
+          strokeWidth={2}
           stroke="currentColor"
-          className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`}
+          className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`}
         >
           <path
             strokeLinecap="round"
@@ -73,12 +73,12 @@ export default function GenerateTagsButton({ sourceId, onUpdate }: GenerateTagsB
         </svg>
       </button>
       {error && (
-        <div className="absolute left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-red-600 text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 px-2 py-1 bg-red-600 text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none">
           {error}
         </div>
       )}
       {success && (
-        <div className="absolute left-1/2 -translate-x-1/2 mt-1 px-2 py-1 bg-green-600 text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 px-2 py-1 bg-green-600 text-white text-xs rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 pointer-events-none">
           Tags generiert!
         </div>
       )}

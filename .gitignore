@@ -39,3 +39,12 @@ next-env.d.ts
 # prisma
 /prisma/migrations
 
+# import scripts
+scripts/import*.ts
+scripts/update*.ts
+scripts/create-admin.ts
+
+# CSV files
+*.csv
+public/*.csv
+

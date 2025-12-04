@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "import:categories": "tsx scripts/import-categories.ts",
     "import:sources": "tsx scripts/import-sources.ts",
-    "update:sistrix": "tsx scripts/update-sistrix-index.ts"
+    "update:sistrix": "tsx scripts/update-sistrix-index.ts",
+    "update:countries": "tsx scripts/update-source-countries.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.6.0",
