@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Batch Tags] Gefunden: ${sourcesWithoutTags.length} Sources ohne Tags (von ${allSources.length} total)`)
 
-    // Limit auf 100 für Batch-Verarbeitung
-    const sources = sourcesWithoutTags.slice(0, 100).map((source) => ({
+    // Limit auf 500 für Batch-Verarbeitung
+    const sources = sourcesWithoutTags.slice(0, 500).map((source) => ({
       id: source.id,
       name: source.name,
       url: source.url,
