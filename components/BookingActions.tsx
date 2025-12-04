@@ -27,6 +27,9 @@ export default function BookingActions({ booking, user }: BookingActionsProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [publisherProducesContent, setPublisherProducesContent] = useState(false)
+  const [isSendingReminder, setIsSendingReminder] = useState(false)
+  const [reminderError, setReminderError] = useState("")
+  const [reminderSuccess, setReminderSuccess] = useState(false)
 
   const handleStatusChange = async (newStatus: string, publisherProducesContent?: boolean) => {
     setIsLoading(true)
@@ -146,8 +149,59 @@ export default function BookingActions({ booking, user }: BookingActionsProps) {
     return null
   }
 
+  const handleSendReminder = async () => {
+    setIsSendingReminder(true)
+    setReminderError("")
+    setReminderSuccess(false)
+
+    try {
+      const response = await fetch(`/api/bookings/${booking.id}/reminder`, {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Fehler beim Senden des Reminders")
+      }
+
+      setReminderSuccess(true)
+      setTimeout(() => {
+        setReminderSuccess(false)
+      }, 3000)
+    } catch (err: any) {
+      setReminderError(err.message || "Ein Fehler ist aufgetreten")
+    } finally {
+      setIsSendingReminder(false)
+    }
+  }
+
   // ADMIN und MEMBER können Status ändern
   if (user.role === "ADMIN" || user.role === "MEMBER") {
+      setIsSendingReminder(true)
+      setReminderError("")
+      setReminderSuccess(false)
+
+      try {
+        const response = await fetch(`/api/bookings/${booking.id}/reminder`, {
+          method: "POST",
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || "Fehler beim Senden des Reminders")
+        }
+
+        setReminderSuccess(true)
+        setTimeout(() => {
+          setReminderSuccess(false)
+        }, 3000)
+      } catch (err: any) {
+        setReminderError(err.message || "Ein Fehler ist aufgetreten")
+      } finally {
+        setIsSendingReminder(false)
+      }
+    }
+
     return (
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Aktionen</h2>
@@ -156,7 +210,26 @@ export default function BookingActions({ booking, user }: BookingActionsProps) {
             {error}
           </div>
         )}
+        {reminderError && (
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md mb-4">
+            {reminderError}
+          </div>
+        )}
+        {reminderSuccess && (
+          <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md mb-4">
+            Reminder-E-Mail erfolgreich gesendet!
+          </div>
+        )}
         <div className="flex flex-wrap gap-3">
+          {booking.status === "REQUESTED" && (
+            <button
+              onClick={handleSendReminder}
+              disabled={isSendingReminder}
+              className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSendingReminder ? "Wird gesendet..." : "Reminder senden"}
+            </button>
+          )}
           {booking.status === "ACCEPTED" && booking.publisherProducesContent && (
             <button
               onClick={() => handleStatusChange("PUBLISHED")}

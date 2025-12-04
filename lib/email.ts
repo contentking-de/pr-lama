@@ -352,6 +352,125 @@ export async function sendBookingNotificationEmail(data: BookingNotificationData
   }
 }
 
+interface BookingReminderEmailData {
+  publisherEmail: string
+  publisherName: string | null
+  bookingId: string
+  linkSourceName: string
+  linkSourceUrl: string
+  clientBrand: string
+  clientDomain: string
+  targetUrl: string
+  anchorText: string
+  publicationDate: Date
+  requesterName: string | null
+  requesterEmail: string
+  createdAt: Date
+}
+
+export async function sendBookingReminderEmail(data: BookingReminderEmailData) {
+  if (!process.env.RESEND_API_KEY) {
+    console.error("RESEND_API_KEY is not set")
+    throw new Error("E-Mail-Konfiguration fehlt")
+  }
+
+  const publicationDateFormatted = new Date(data.publicationDate).toLocaleDateString("de-DE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+
+  const createdAtFormatted = new Date(data.createdAt).toLocaleDateString("de-DE", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+
+  try {
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || "noreply@prlama.com",
+      to: data.publisherEmail,
+      subject: `Erinnerung: Offene Buchungsanfrage für ${data.linkSourceName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Erinnerung: Buchungsanfrage</title>
+          </head>
+          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #fef3c7; padding: 30px; border-radius: 8px; border-left: 4px solid #f59e0b;">
+              <h1 style="color: #f59e0b; margin-bottom: 20px;">Erinnerung: Offene Buchungsanfrage</h1>
+              
+              <p style="font-size: 16px; margin-bottom: 20px;">
+                Hallo ${data.publisherName || data.publisherEmail},
+              </p>
+              
+              <p style="font-size: 16px; margin-bottom: 30px;">
+                Diese E-Mail erinnert dich daran, dass noch eine offene Buchungsanfrage für deine Linkquelle <strong>${data.linkSourceName}</strong> aussteht, die am <strong>${createdAtFormatted}</strong> erstellt wurde.
+              </p>
+              
+              <div style="background-color: white; padding: 20px; border-radius: 6px; margin-bottom: 30px; border-left: 4px solid #f59e0b;">
+                <h2 style="color: #f59e0b; margin-top: 0; margin-bottom: 20px;">Buchungsdetails</h2>
+                
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold; width: 150px;">Linkquelle:</td>
+                    <td style="padding: 8px 0;">
+                      <a href="${data.linkSourceUrl}" style="color: #2563eb; text-decoration: none;">${data.linkSourceName}</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Kunde:</td>
+                    <td style="padding: 8px 0;">${data.clientBrand} (${data.clientDomain})</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Ziel-URL:</td>
+                    <td style="padding: 8px 0;">
+                      <a href="${data.targetUrl}" style="color: #2563eb; text-decoration: none; word-break: break-all;">${data.targetUrl}</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Anchor-Text:</td>
+                    <td style="padding: 8px 0;">${data.anchorText}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Veröffentlichungsdatum:</td>
+                    <td style="padding: 8px 0;">${publicationDateFormatted}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Angefragt von:</td>
+                    <td style="padding: 8px 0;">${data.requesterName || data.requesterEmail}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; font-weight: bold;">Angefragt am:</td>
+                    <td style="padding: 8px 0;">${createdAtFormatted}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="${process.env.NEXTAUTH_URL || "http://localhost:3000"}/bookings/${data.bookingId}" 
+                   style="display: inline-block; background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                  Buchung jetzt bearbeiten
+                </a>
+              </div>
+              
+              <p style="font-size: 14px; color: #666; margin-top: 30px;">
+                Bitte prüfe die Buchung in deinem Dashboard und nimm sie an oder lehne sie ab.
+              </p>
+            </div>
+          </body>
+        </html>
+      `,
+    })
+  } catch (error) {
+    console.error("Error sending booking reminder email:", error)
+    throw new Error("E-Mail konnte nicht gesendet werden")
+  }
+}
+
 interface BriefingEmailData {
   recipientEmail: string
   recipientName: string | null
