@@ -34,6 +34,13 @@ function getSistrixCountryCode(country: string | null): string {
     austria: "at",
     polen: "pl",
     poland: "pl",
+    england: "gb",
+    "vereinigtes königreich": "gb",
+    "vereinigtes koenigreich": "gb",
+    "united kingdom": "gb",
+    uk: "gb",
+    "großbritannien": "gb",
+    "grossbritannien": "gb",
   }
 
   return countryToCode[countryLower] || "de" // Fallback: Deutschland

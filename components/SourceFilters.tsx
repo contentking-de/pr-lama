@@ -30,9 +30,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get("category") || "")
   const [selectedPublisher, setSelectedPublisher] = useState(searchParams.get("publisher") || "")
   const [selectedCountry, setSelectedCountry] = useState(searchParams.get("country") || "")
-  const [maxPrice, setMaxPrice] = useState(
-    searchParams.get("maxPrice") || defaultPriceRange.max.toString()
-  )
+  const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") || "")
   const [minSistrix, setMinSistrix] = useState(
     searchParams.get("minSistrix") || defaultSistrixRange.min.toString()
   )
@@ -44,7 +42,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
     if (selectedCategory) params.set("category", selectedCategory)
     if (selectedPublisher) params.set("publisher", selectedPublisher)
     if (selectedCountry) params.set("country", selectedCountry)
-    if (maxPrice && parseFloat(maxPrice) < defaultPriceRange.max) {
+    if (maxPrice && maxPrice.trim() !== "" && parseFloat(maxPrice) < defaultPriceRange.max) {
       params.set("maxPrice", maxPrice)
     }
     if (minSistrix && parseFloat(minSistrix) > defaultSistrixRange.min) {
@@ -59,7 +57,7 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
     setSelectedCategory("")
     setSelectedPublisher("")
     setSelectedCountry("")
-    setMaxPrice(defaultPriceRange.max.toString())
+    setMaxPrice("")
     setMinSistrix(defaultSistrixRange.min.toString())
     router.push("/sources")
   }
@@ -169,20 +167,21 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
           </div>
         )}
 
-        {/* Max Preis Slider */}
+        {/* Max Preis Input */}
         <div>
           <label htmlFor="maxPrice" className="block text-sm font-medium text-gray-700 mb-2">
-            Max Preis: {parseFloat(maxPrice).toFixed(2)} €
+            Max Preis (€)
           </label>
           <input
             id="maxPrice"
-            type="range"
+            type="number"
             min={defaultPriceRange.min}
             max={defaultPriceRange.max}
-            step="1"
+            step="0.01"
             value={maxPrice}
             onChange={(e) => setMaxPrice(e.target.value)}
-            className="w-full"
+            placeholder={`Max ${defaultPriceRange.max} €`}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 

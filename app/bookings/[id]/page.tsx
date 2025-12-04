@@ -181,6 +181,18 @@ export default async function BookingDetailPage({
               </span>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700">Publisher</label>
+              <p className="mt-1 text-sm text-gray-900">
+                {booking.linkSource.publisher.name || booking.linkSource.publisher.email}
+              </p>
+              <a
+                href={`mailto:${booking.linkSource.publisher.email}`}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                {booking.linkSource.publisher.email}
+              </a>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700">Angefragt von</label>
               <p className="mt-1 text-sm text-gray-900">
                 {booking.requester.name || booking.requester.email}

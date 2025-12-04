@@ -58,18 +58,97 @@ export default function SourceRowWithTags({ source, userRole, userId }: SourceRo
             {countryFlag || "-"}
           </div>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap">
+        <td className="px-6 py-4 whitespace-nowrap hidden">
           <div className="text-sm font-medium text-gray-900">{source.name}</div>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <a
-            href={source.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-blue-600 hover:underline"
-          >
-            {source.url}
-          </a>
+        <td className="px-6 py-4">
+          <div className="flex flex-col gap-2">
+            <a
+              href={source.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-blue-600 hover:underline"
+            >
+              {source.url}
+            </a>
+            <div className="flex items-center gap-2">
+              {(userRole === "ADMIN" || userRole === "MEMBER") && (
+                <>
+                  <Link
+                    href={`/bookings/new?sourceId=${source.id}`}
+                    className="p-1.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                    title="Buchen"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                  </Link>
+                  <GenerateTagsButton sourceId={source.id} onUpdate={handleTagsUpdate} />
+                </>
+              )}
+              <Link
+                href={`/sources/${source.id}`}
+                className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                title="Ansehen"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
+                </svg>
+              </Link>
+              {(userRole === "ADMIN" ||
+                userRole === "MEMBER" ||
+                (userRole === "PUBLISHER" && source.publisherId && userId && source.publisherId === userId)) && (
+                <Link
+                  href={`/sources/${source.id}/edit`}
+                  className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                  title="Bearbeiten"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </Link>
+              )}
+            </div>
+          </div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="text-sm text-gray-900">
@@ -81,8 +160,8 @@ export default function SourceRowWithTags({ source, userRole, userId }: SourceRo
             {parseFloat(source.price.toString()).toFixed(2)} €
           </div>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap">
-          <div className="text-sm text-gray-900">{source.category}</div>
+        <td className="px-3 py-4">
+          <div className="text-sm text-gray-900 break-words max-w-xs">{source.category}</div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap">
           <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
@@ -117,90 +196,11 @@ export default function SourceRowWithTags({ source, userRole, userId }: SourceRo
             )}
           </div>
         </td>
-        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-          <div className="flex items-center justify-end gap-3">
-            {(userRole === "ADMIN" || userRole === "MEMBER") && (
-              <>
-                <Link
-                  href={`/bookings/new?sourceId=${source.id}`}
-                  className="p-1.5 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
-                  title="Buchen"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </Link>
-                <GenerateTagsButton sourceId={source.id} onUpdate={handleTagsUpdate} />
-              </>
-            )}
-            <Link
-              href={`/sources/${source.id}`}
-              className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-              title="Ansehen"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                />
-              </svg>
-            </Link>
-            {(userRole === "ADMIN" ||
-              userRole === "MEMBER" ||
-              (userRole === "PUBLISHER" && source.publisherId && userId && source.publisherId === userId)) && (
-              <Link
-                href={`/sources/${source.id}/edit`}
-                className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                title="Bearbeiten"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                  />
-                </svg>
-              </Link>
-            )}
-          </div>
-        </td>
       </tr>
       {/* Tags Toggle Row */}
       {(tags && tags.length > 0) || (userRole === "ADMIN" || userRole === "MEMBER") ? (
         <tr className="bg-gray-50">
-          <td colSpan={9} className="px-6 py-3">
+          <td colSpan={8} className="px-6 py-3">
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsTagsExpanded(!isTagsExpanded)}
