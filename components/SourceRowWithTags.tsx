@@ -1,10 +1,26 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import UpdateSistrixButton from "./UpdateSistrixButton"
 import GenerateTagsButton from "./GenerateTagsButton"
 import { getCountryFlag } from "@/lib/countryFlags"
+import { useRouter } from "next/navigation"
+
+// Verfügbare Länder für das Dropdown
+const AVAILABLE_COUNTRIES = [
+  "Belgien",
+  "Dänemark",
+  "Deutschland",
+  "England",
+  "Frankreich",
+  "Italien",
+  "Niederlande",
+  "Österreich",
+  "Polen",
+  "Schweiz",
+  "Spanien",
+].sort()
 
 interface SourceRowWithTagsProps {
   source: {
@@ -29,6 +45,7 @@ interface SourceRowWithTagsProps {
 }
 
 export default function SourceRowWithTags({ source, userRole, userId }: SourceRowWithTagsProps) {
+  const router = useRouter()
   const [isTagsExpanded, setIsTagsExpanded] = useState(false)
   const [tags, setTags] = useState<string[]>(source.tags || [])
   const [sistrixVisibilityIndex, setSistrixVisibilityIndex] = useState<number | null>(
@@ -37,6 +54,27 @@ export default function SourceRowWithTags({ source, userRole, userId }: SourceRo
   const [sistrixLastUpdated, setSistrixLastUpdated] = useState<Date | null>(
     source.sistrixLastUpdated
   )
+  const [country, setCountry] = useState<string | null>(source.country)
+  const [isUpdatingCountry, setIsUpdatingCountry] = useState(false)
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  
+  // Schließe Dropdown beim Klick außerhalb
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowCountryDropdown(false)
+      }
+    }
+
+    if (showCountryDropdown) {
+      document.addEventListener("mousedown", handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showCountryDropdown])
   
   const handleTagsUpdate = (newTags: string[]) => {
     setTags(newTags)
@@ -48,15 +86,114 @@ export default function SourceRowWithTags({ source, userRole, userId }: SourceRo
     setSistrixLastUpdated(new Date())
   }
 
-  const countryFlag = getCountryFlag(source.country)
+  const handleCountryChange = async (newCountry: string | null) => {
+    setIsUpdatingCountry(true)
+    setShowCountryDropdown(false)
+    
+    try {
+      const response = await fetch(`/api/sources/${source.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          country: newCountry || null,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Fehler beim Aktualisieren des Landes")
+      }
+
+      setCountry(newCountry)
+      router.refresh()
+    } catch (error) {
+      console.error("Error updating country:", error)
+      alert("Fehler beim Aktualisieren des Landes")
+    } finally {
+      setIsUpdatingCountry(false)
+    }
+  }
+
+  const countryFlag = getCountryFlag(country)
 
   return (
     <>
       <tr className="hover:bg-gray-50">
         <td className="px-2 py-4 whitespace-nowrap text-center">
-          <div className="text-2xl" title={source.country || ""}>
-            {countryFlag || "-"}
-          </div>
+          {country ? (
+            <div className="text-2xl" title={country}>
+              {countryFlag}
+            </div>
+          ) : (
+            <div className="relative inline-block" ref={dropdownRef}>
+              {isUpdatingCountry ? (
+                <svg
+                  className="animate-spin h-5 w-5 text-gray-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+              ) : (
+                <button
+                  onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                  title="Land auswählen"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+              )}
+              {showCountryDropdown && !isUpdatingCountry && (
+                <div className="absolute left-0 top-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 min-w-[200px] max-h-[300px] overflow-y-auto">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleCountryChange(null)}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Kein Land
+                    </button>
+                    {AVAILABLE_COUNTRIES.map((countryOption) => (
+                      <button
+                        key={countryOption}
+                        onClick={() => handleCountryChange(countryOption)}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                      >
+                        <span>{getCountryFlag(countryOption)}</span>
+                        <span>{countryOption}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </td>
         <td className="px-6 py-4 whitespace-nowrap hidden">
           <div className="text-sm font-medium text-gray-900">{source.name}</div>

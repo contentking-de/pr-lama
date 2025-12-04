@@ -6,6 +6,8 @@ import { getCountryFromUrl, getCountryFlag } from "@/lib/countryFlags"
 
 // Verfügbare Länder für das Dropdown
 const AVAILABLE_COUNTRIES = [
+  "Belgien",
+  "Dänemark",
   "Deutschland",
   "England",
   "Frankreich",

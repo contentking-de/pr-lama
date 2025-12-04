@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import Layout from "@/components/Layout"
 import BookingsChart from "@/components/BookingsChart"
 import ContentStatusChart from "@/components/ContentStatusChart"
+import { getCountryFlag } from "@/lib/countryFlags"
 
 export default async function DashboardPage() {
   const user = await requireAuth()
@@ -16,6 +17,8 @@ export default async function DashboardPage() {
     totalPublishers?: number
     bookingsData?: { date: string; count: number }[]
     contentData?: { name: string; pending: number; provided: number }[]
+    countryBreakdown?: { country: string | null; count: number }[]
+    tagCloud?: { tag: string; count: number }[]
     mySources?: number
     myBookings?: number
     pendingRequests?: number
@@ -30,6 +33,8 @@ export default async function DashboardPage() {
       totalPublishers,
       bookingsData,
       contentData,
+      countryBreakdown,
+      tagCloud,
     ] = await Promise.all([
       prisma.linkSource.count(),
       prisma.client.count(),
@@ -85,6 +90,57 @@ export default async function DashboardPage() {
           { name: "Content Status", pending, provided },
         ]
       })(),
+      // Länder-Breakdown
+      (async () => {
+        const sources = await prisma.linkSource.findMany({
+          select: {
+            country: true,
+          },
+        })
+        
+        // Gruppiere nach Land
+        const countryCounts: Record<string, number> = {}
+        sources.forEach((source) => {
+          const country = source.country || "Ohne Land"
+          countryCounts[country] = (countryCounts[country] || 0) + 1
+        })
+        
+        // Konvertiere zu Array und sortiere nach Anzahl (absteigend)
+        return Object.entries(countryCounts)
+          .map(([country, count]) => ({
+            country: country === "Ohne Land" ? null : country,
+            count,
+          }))
+          .sort((a, b) => b.count - a.count)
+      })(),
+      // Tag-Cloud
+      (async () => {
+        const sources = await prisma.linkSource.findMany({
+          select: {
+            tags: true,
+          },
+        })
+        
+        // Sammle alle Tags und zähle Vorkommen
+        const tagCounts: Record<string, number> = {}
+        sources.forEach((source) => {
+          if (source.tags && source.tags.length > 0) {
+            source.tags.forEach((tag) => {
+              const normalizedTag = tag.trim()
+              if (normalizedTag) {
+                tagCounts[normalizedTag] = (tagCounts[normalizedTag] || 0) + 1
+              }
+            })
+          }
+        })
+        
+        // Konvertiere zu Array und sortiere nach Anzahl (absteigend)
+        // Begrenze auf Top 50 Tags
+        return Object.entries(tagCounts)
+          .map(([tag, count]) => ({ tag, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 50)
+      })(),
     ])
     
     stats = {
@@ -95,6 +151,8 @@ export default async function DashboardPage() {
       totalPublishers,
       bookingsData,
       contentData,
+      countryBreakdown,
+      tagCloud,
     }
   } else if (user.role === "PUBLISHER") {
     const [mySources, myBookings, pendingRequests] = await Promise.all([
@@ -240,6 +298,103 @@ export default async function DashboardPage() {
               )}
             </div>
           </div>
+        )}
+
+        {/* Länder-Breakdown - nur für ADMIN/MEMBER */}
+        {(user.role === "ADMIN" || user.role === "MEMBER") && (
+          <>
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Linkquellen nach Ländern
+              </h2>
+              {stats.countryBreakdown && stats.countryBreakdown.length > 0 ? (
+                <div className="space-y-3">
+                  {stats.countryBreakdown.map((item) => {
+                    const countryFlag = getCountryFlag(item.country)
+                    const countryName = item.country || "Ohne Land"
+                    const percentage = stats.totalSources
+                      ? ((item.count / stats.totalSources) * 100).toFixed(1)
+                      : "0"
+                    
+                    return (
+                      <div key={countryName} className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 min-w-[120px]">
+                          <span className="text-2xl">{countryFlag || "-"}</span>
+                          <span className="text-sm font-medium text-gray-900">{countryName}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 bg-gray-200 rounded-full h-6 overflow-hidden">
+                              <div
+                                className="bg-blue-600 h-full rounded-full transition-all"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <div className="text-sm font-semibold text-gray-900 min-w-[60px] text-right">
+                              {item.count}
+                            </div>
+                            <div className="text-sm text-gray-500 min-w-[50px] text-right">
+                              {percentage}%
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  Keine Daten verfügbar
+                </div>
+              )}
+            </div>
+
+            {/* Tag-Cloud - nur für ADMIN/MEMBER */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Tag-Cloud
+              </h2>
+              {stats.tagCloud && stats.tagCloud.length > 0 ? (
+                <div className="flex flex-wrap gap-3">
+                  {(() => {
+                    const tagCloud = stats.tagCloud
+                    const maxCount = tagCloud[0].count
+                    const minCount = tagCloud[tagCloud.length - 1].count
+                    const range = maxCount - minCount || 1
+                    
+                    return tagCloud.map((item) => {
+                      // Berechne Schriftgröße basierend auf Häufigkeit
+                      // Min: 0.75rem, Max: 1.5rem
+                      const size = 0.75 + ((item.count - minCount) / range) * 0.75
+                      
+                      // Berechne Opacity basierend auf Häufigkeit
+                      const opacity = 0.6 + ((item.count - minCount) / range) * 0.4
+                    
+                      return (
+                        <a
+                          key={item.tag}
+                          href={`/sources?search=${encodeURIComponent(item.tag)}`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-purple-100 hover:bg-purple-200 transition-colors"
+                          style={{
+                            fontSize: `${size}rem`,
+                            opacity: opacity,
+                          }}
+                          title={`${item.count} Linkquelle${item.count !== 1 ? "n" : ""}`}
+                        >
+                          <span className="text-purple-800 font-medium">{item.tag}</span>
+                          <span className="text-purple-600 text-xs">({item.count})</span>
+                        </a>
+                      )
+                    })
+                  })()}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  Keine Tags verfügbar
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         <div className="bg-white rounded-lg shadow p-6">

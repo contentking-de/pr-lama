@@ -97,7 +97,11 @@ export default async function SourcesPage({
 
   // Land-Filter
   if (country) {
-    where.country = country
+    if (country === "__NO_COUNTRY__") {
+      where.country = null
+    } else {
+      where.country = country
+    }
   }
 
   // Basis-Query für Preis-Berechnung (ohne Filter)
@@ -108,18 +112,13 @@ export default async function SourcesPage({
   const whereWithoutSearch = { ...where }
   delete whereWithoutSearch.OR
 
-  // Lade alle Sources (ohne Pagination, wenn nach Tags gesucht wird)
+  // Wenn nach Tags gesucht wird, müssen wir ALLE Sources laden (ohne Name/URL-Filter),
+  // da Prisma keine Teilstring-Suche in Arrays unterstützt
+  // Dann filtern wir manuell nach Name, URL UND Tags
   const allSourcesQuery = prisma.linkSource.findMany({
     where: search
-      ? {
-          ...whereWithoutSearch,
-          // Suche nur nach Name/URL in Prisma, Tags filtern wir manuell
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { url: { contains: search, mode: "insensitive" } },
-          ],
-        }
-      : where,
+      ? whereWithoutSearch // Lade alle Sources mit anderen Filtern, aber ohne Name/URL-Suche
+      : where, // Wenn keine Suche, verwende normale where-Klausel
     include: {
       publisher: {
         select: {
@@ -144,10 +143,11 @@ export default async function SourcesPage({
   if (search) {
     const searchLower = search.toLowerCase()
     allSources = allSources.filter((source) => {
-      // Prüfe Name und URL (bereits gefiltert durch Prisma)
-      const matchesNameOrUrl =
-        source.name.toLowerCase().includes(searchLower) ||
-        source.url.toLowerCase().includes(searchLower)
+      // Prüfe Name (case-insensitive Teilstring-Suche)
+      const matchesName = source.name.toLowerCase().includes(searchLower)
+
+      // Prüfe URL (case-insensitive Teilstring-Suche)
+      const matchesUrl = source.url.toLowerCase().includes(searchLower)
 
       // Prüfe Tags (case-insensitive Teilstring-Suche)
       const matchesTags =
@@ -155,7 +155,7 @@ export default async function SourcesPage({
         source.tags.length > 0 &&
         source.tags.some((tag) => tag.toLowerCase().includes(searchLower))
 
-      return matchesNameOrUrl || matchesTags
+      return matchesName || matchesUrl || matchesTags
     })
   }
 
@@ -291,6 +291,17 @@ export default async function SourcesPage({
           publishers={publishers}
           countries={countries}
         />
+
+        {/* Suchergebnisse-Anzeige */}
+        {search && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+            <p className="text-sm text-blue-900">
+              Die Suche nach <span className="font-semibold">"{search}"</span> hat{" "}
+              <span className="font-semibold">{totalSourcesFiltered}</span>{" "}
+              Treffer ergeben.
+            </p>
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full divide-y divide-gray-200">

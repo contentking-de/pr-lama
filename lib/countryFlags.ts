@@ -23,6 +23,8 @@ export function getCountryFromUrl(url: string): string | null {
       'ch': 'Schweiz',
       'at': 'Österreich',
       'pl': 'Polen',
+      'be': 'Belgien',
+      'dk': 'Dänemark',
     }
     
     return tldToCountry[tld] || null
@@ -40,6 +42,8 @@ export function getCountryFromUrl(url: string): string | null {
         'ch': 'Schweiz',
         'at': 'Österreich',
         'pl': 'Polen',
+        'be': 'Belgien',
+        'dk': 'Dänemark',
       }
       return tldToCountry[tld] || null
     }

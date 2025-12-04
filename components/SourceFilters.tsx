@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { getCountryFlag } from "@/lib/countryFlags"
 
 interface Publisher {
@@ -21,6 +21,7 @@ interface SourceFiltersProps {
 export default function SourceFilters({ categories, priceRange, sistrixRange, publishers = [], countries = [] }: SourceFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [isPending, startTransition] = useTransition()
   
   // Fallback-Werte für priceRange und sistrixRange
   const defaultPriceRange = priceRange || { min: 0, max: 1000 }
@@ -49,7 +50,9 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
       params.set("minSistrix", minSistrix)
     }
 
-    router.push(`/sources?${params.toString()}`)
+    startTransition(() => {
+      router.push(`/sources?${params.toString()}`)
+    })
   }
 
   const handleReset = () => {
@@ -78,10 +81,38 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
   return (
     <div className="bg-white rounded-lg shadow p-6 space-y-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Filter</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-gray-900">Filter</h2>
+          {isPending && (
+            <div className="flex items-center gap-2 text-sm text-blue-600">
+              <svg
+                className="animate-spin h-4 w-4"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <span>Suche läuft...</span>
+            </div>
+          )}
+        </div>
         <button
           onClick={handleReset}
-          className="text-sm text-gray-600 hover:text-gray-900"
+          disabled={isPending}
+          className="text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Zurücksetzen
         </button>
@@ -124,26 +155,25 @@ export default function SourceFilters({ categories, priceRange, sistrixRange, pu
         </div>
 
         {/* Land Filter */}
-        {countries.length > 0 && (
-          <div>
-            <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
-              Land
-            </label>
-            <select
-              id="country"
-              value={selectedCountry}
-              onChange={(e) => setSelectedCountry(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Alle Länder</option>
-              {countries.map((country) => (
-                <option key={country} value={country}>
-                  {getCountryFlag(country)} {country}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
+        <div>
+          <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
+            Land
+          </label>
+          <select
+            id="country"
+            value={selectedCountry}
+            onChange={(e) => setSelectedCountry(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Alle Länder</option>
+            <option value="__NO_COUNTRY__">Ohne Land</option>
+            {countries.map((country) => (
+              <option key={country} value={country}>
+                {getCountryFlag(country)} {country}
+              </option>
+            ))}
+          </select>
+        </div>
 
         {/* Publisher Filter */}
         {publishers.length > 0 && (
